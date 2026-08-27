@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+
+  <title>IPMA Location Test</title>
+
+  <style>
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+      padding: 30px;
+
+      text-align: center;
+    }
+
+    button {
+      font-size: 18px;
+
+      padding: 12px 20px;
+
+      border-radius: 8px;
+
+      border: 1px solid #999;
+
+      background: white;
+    }
+
+    #result {
+      margin-top: 25px;
+
+      font-size: 17px;
+
+      line-height: 1.6;
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+  <h2>iPhone Location Test</h2>
+
+  <button
+    id="locationButton"
+    type="button"
+  >
+    Get My Location
+  </button>
+
+  <div id="result">
+    Waiting…
+  </div>
+
+
+  <script>
+
+    const button =
+      document.getElementById(
+        "locationButton"
+      );
+
+    const result =
+      document.getElementById(
+        "result"
+      );
+
+
+    button.addEventListener(
+      "click",
+      function() {
+
+        result.textContent =
+          "Requesting location…";
+
+
+        if (!navigator.geolocation) {
+
+          result.textContent =
+            "ERROR: Geolocation is not available.";
+
+          return;
+
+        }
+
+
+        navigator.geolocation.getCurrentPosition(
+
+          function(position) {
+
+            const latitude =
+              position.coords.latitude;
+
+            const longitude =
+              position.coords.longitude;
+
+            const accuracy =
+              position.coords.accuracy;
+
+
+            result.innerHTML =
+
+              "<strong>SUCCESS</strong><br><br>" +
+
+              "Latitude: " +
+              latitude +
+              "<br>" +
+
+              "Longitude: " +
+              longitude +
+              "<br>" +
+
+              "Accuracy: " +
+              Math.round(accuracy) +
+              " metres";
+
+          },
+
+
+          function(error) {
+
+            result.innerHTML =
+
+              "<strong>ERROR</strong><br><br>" +
+
+              "Code: " +
+              error.code +
+              "<br>" +
+
+              "Message: " +
+              error.message;
+
+            console.log(
+              "Geolocation error:",
+              error.code,
+              error.message
+            );
+
+          },
+
+
+          {
+            enableHighAccuracy: true,
+
+            maximumAge: 30000,
+
+            timeout: 15000
+          }
+
+        );
+
+      }
+
+    );
+
+  </script>
+
+</body>
+
+</html>
