@@ -540,17 +540,167 @@ const LocationControl =
               "Finding current location…";
 
 
-          map.locate({
+          navigator.geolocation.getCurrentPosition(
 
-            setView: false,
+  function(position) {
 
-            enableHighAccuracy: true,
+    const lat =
+      position.coords.latitude;
 
-            maximumAge: 30000,
+    const lon =
+      position.coords.longitude;
 
-            timeout: 10000
+    const accuracy =
+      position.coords.accuracy;
 
-          });
+    const latlng =
+      L.latLng(lat, lon);
+
+
+    /*
+     * Remove previous location display.
+     */
+
+    if (locationMarker) {
+
+      map.removeLayer(
+        locationMarker
+      );
+
+    }
+
+    if (locationCircle) {
+
+      map.removeLayer(
+        locationCircle
+      );
+
+    }
+
+
+    /*
+     * Show current position.
+     */
+
+    locationMarker =
+      L.circleMarker(
+
+        latlng,
+
+        {
+          radius: 7,
+          weight: 3,
+          fillOpacity: 1
+        }
+
+      ).addTo(map);
+
+
+    /*
+     * Show reported GPS accuracy.
+     */
+
+    locationCircle =
+      L.circle(
+
+        latlng,
+
+        {
+          radius: accuracy,
+          weight: 1,
+          fillOpacity: 0.05
+        }
+
+      ).addTo(map);
+
+
+    /*
+     * Center the map on the current location.
+     */
+
+    map.setView(
+
+      latlng,
+
+      Math.max(
+        map.getZoom(),
+        11
+      ),
+
+      {
+        animate: false
+      }
+
+    );
+
+
+    button.classList.remove(
+      "locating"
+    );
+
+
+    document
+      .getElementById("status")
+      .textContent =
+        "Current location";
+
+  },
+
+
+  function(error) {
+
+    button.classList.remove(
+      "locating"
+    );
+
+
+    let message =
+      "Unable to determine location.";
+
+
+    if (error.code === 1) {
+
+      message =
+        "Location permission was denied.";
+
+    }
+
+    else if (error.code === 2) {
+
+      message =
+        "Current location is unavailable.";
+
+    }
+
+    else if (error.code === 3) {
+
+      message =
+        "Location request timed out.";
+
+    }
+
+
+    document
+      .getElementById("status")
+      .textContent =
+        message;
+
+
+    console.log(
+      "Geolocation error:",
+      error.code,
+      error.message
+    );
+
+  },
+
+  {
+    enableHighAccuracy: true,
+    maximumAge: 30000,
+    timeout: 10000
+  }
+
+);
 
         }
 
