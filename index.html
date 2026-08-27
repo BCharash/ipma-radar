@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  >
+
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="black-translucent"
+  >
+
+  <meta
+    name="apple-mobile-web-app-title"
+    content="IPMA Radar"
+  >
+
+  <title>IPMA Radar Test</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+
+      background: #f2f2f2;
+    }
+
+    #app {
+      width: 100%;
+      height: 100%;
+
+      display: flex;
+      flex-direction: column;
+    }
+
+    #controls {
+      flex: 0 0 auto;
+
+      background: rgba(255,255,255,.97);
+
+      padding:
+        calc(env(safe-area-inset-top) + 8px)
+        10px
+        8px
+        10px;
+
+      border-bottom: 1px solid #ccc;
+
+      z-index: 1000;
+    }
+
+    .top-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .title {
+      font-size: 17px;
+      font-weight: 600;
+
+      margin-right: auto;
+    }
+
+    button,
+    select {
+      font: inherit;
+      font-size: 14px;
+
+      min-height: 36px;
+
+      padding:
+        5px
+        9px;
+
+      border:
+        1px solid #aaa;
+
+      border-radius: 7px;
+
+      background: white;
+    }
+
+    button:active {
+      background: #e8e8e8;
+    }
+
+    #time {
+      width: 100%;
+
+      margin-top: 5px;
+
+      font-size: 13px;
+
+      color: #555;
+
+      text-align: center;
+
+      font-variant-numeric:
+        tabular-nums;
+    }
+
+    #status {
+      width: 100%;
+
+      margin-top: 3px;
+
+      font-size: 11px;
+
+      color: #777;
+
+      text-align: center;
+    }
+
+    #map {
+      flex: 1 1 auto;
+
+      min-height: 0;
+
+      width: 100%;
+    }
+
+    .beach-label {
+      background: white;
+
+      border:
+        1px solid #999;
+
+      border-radius: 4px;
+
+      padding:
+        2px
+        5px;
+
+      font-size: 11px;
+
+      font-weight: 600;
+
+      box-shadow:
+        0
+        1px
+        3px
+        rgba(0,0,0,.25);
+    }
+
+    .leaflet-control-attribution {
+      font-size: 9px;
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+<div id="app">
+
+  <div id="controls">
+
+    <div class="top-row">
+
+      <div class="title">
+        IPMA Radar Test
+      </div>
+
+      <select id="beachSelect">
+
+        <option value="santarita">
+          Santa Rita
+        </option>
+
+        <option value="moledo">
+          Moledo
+        </option>
+
+        <option value="tavira">
+          Tavira
+        </option>
+
+      </select>
+
+      <button
+        id="previous"
+        type="button"
+      >
+        ◀
+      </button>
+
+      <button
+        id="play"
+        type="button"
+      >
+        ▶ Play
+      </button>
+
+      <button
+        id="next"
+        type="button"
+      >
+        ▶
+      </button>
+
+    </div>
+
+
+    <div id="time">
+      Loading radar…
+    </div>
+
+
+    <div id="status">
+      Starting…
+    </div>
+
+  </div>
+
+
+  <div id="map"></div>
+
+</div>
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+<script>
+
+/* ============================================================
+   BEACHES
+   ============================================================ */
+
+const beaches = {
+
+  moledo: {
+    name: "Praia de Moledo",
+    lat: 41.84945,
+    lon: -8.86666
+  },
+
+  santarita: {
+    name: "Praia de Santa Rita",
+    lat: 39.17454,
+    lon: -9.35688
+  },
+
+  tavira: {
+    name: "Praia da Ilha de Tavira",
+    lat: 37.111478,
+    lon: -7.619766
+  }
+
+};
+
+
+/* ============================================================
+   MAP
+   ============================================================ */
+
+const map =
+  L.map("map", {
+
+    zoomControl: true,
+
+    minZoom: 6,
+
+    maxZoom: 12
+
+  });
+
+
+/*
+ * Start with Portugal rather than all of Iberia.
+ */
+
+const portugalBounds =
+  L.latLngBounds(
+
+    [36.80, -9.60],
+
+    [42.15, -6.10]
+
+  );
+
+
+map.fitBounds(
+
+  portugalBounds,
+
+  {
+    padding: [5,5]
+  }
+
+);
+
+
+L.tileLayer(
+
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+
+  {
+
+    maxZoom: 19,
+
+    attribution:
+      "© OpenStreetMap contributors"
+
+  }
+
+).addTo(map);
+
+
+/* ============================================================
+   BEACH MARKER
+   ============================================================ */
+
+let beachMarker = null;
+
+
+function showBeach(key) {
+
+  const beach =
+    beaches[key];
+
+
+  if (beachMarker) {
+
+    map.removeLayer(
+      beachMarker
+    );
+
+  }
+
+
+  beachMarker =
+    L.circleMarker(
+
+      [
+        beach.lat,
+        beach.lon
+      ],
+
+      {
+
+        radius: 7,
+
+        weight: 2,
+
+        fillOpacity: 1
+
+      }
+
+    )
+
+    .addTo(map)
+
+    .bindTooltip(
+
+      beach.name,
+
+      {
+
+        permanent: true,
+
+        direction: "right",
+
+        offset: [8,0],
+
+        className:
+          "beach-label"
+
+      }
+
+    );
+
+
+  map.setView(
+
+    [
+      beach.lat,
+      beach.lon
+    ],
+
+    9,
+
+    {
+      animate: false
+    }
+
+  );
+
+}
+
+
+document
+
+  .getElementById("beachSelect")
+
+  .addEventListener(
+
+    "change",
+
+    event => {
+
+      showBeach(
+        event.target.value
+      );
+
+    }
+
+  );
+
+
+showBeach(
+  "santarita"
+);
+
+
+/* ============================================================
+   IPMA RADAR
+   ============================================================ */
+
+/*
+ * IPMA's own mapbuilder-pt.js uses these bounds for
+ * the Portugal radar ImageOverlay.
+ *
+ * Source:
+ *
+ *   new L.LatLngBounds(
+ *     new L.latLng(34.011513, -12.454795),
+ *     new L.latLng(43.792862, -4.345465)
+ *   )
+ *
+ * We use the same geographic registration here.
+ */
+
+const RADAR_BOUNDS = [
+
+  [
+
+    34.011513,
+    -12.454795
+
+  ],
+
+  [
+
+    43.792862,
+    -4.345465
+
+  ]
+
+];
+
+
+const RADAR_BASE_URL =
+  "https://www.ipma.pt/resources.www/transf/radar/por/";
+
+
+/*
+ * Six hours of history.
+ *
+ * 10-minute interval.
+ *
+ * 36 intervals + both endpoints = 37 frames.
+ */
+
+const FRAME_INTERVAL_MINUTES = 10;
+
+const FRAME_COUNT = 37;
+
+
+/*
+ * Animation speed.
+ *
+ * Each radar frame represents ten minutes.
+ *
+ * 500 ms gives a 37-frame animation of about 18 seconds.
+ */
+
+const PLAYBACK_DELAY = 500;
+
+
+/* ============================================================
+   FRAME STATE
+   ============================================================ */
+
+let radarFrames = [];
+
+let currentFrame =
+  FRAME_COUNT - 1;
+
+let radarLayer = null;
+
+let playing = false;
+
+let playTimer = null;
+
+
+/* ============================================================
+   RADAR FILENAME
+   ============================================================ */
+
+function radarFilename(
+  date
+) {
+
+  const yyyy =
+    date.getUTCFullYear();
+
+
+  const mm =
+    String(
+      date.getUTCMonth() + 1
+    )
+    .padStart(2,"0");
+
+
+  const dd =
+    String(
+      date.getUTCDate()
+    )
+    .padStart(2,"0");
+
+
+  const hh =
+    String(
+      date.getUTCHours()
+    )
+    .padStart(2,"0");
+
+
+  const min =
+    String(
+      date.getUTCMinutes()
+    )
+    .padStart(2,"0");
+
+
+  return (
+
+    "pcr-"
+
+    + yyyy
+
+    + "-"
+
+    + mm
+
+    + "-"
+
+    + dd
+
+    + "T"
+
+    + hh
+
+    + min
+
+    + ".png"
+
+  );
+
+}
+
+
+/* ============================================================
+   RADAR URL
+   ============================================================ */
+
+function radarURL(
+  date
+) {
+
+  return (
+
+    RADAR_BASE_URL
+
+    +
+
+    radarFilename(
+      date
+    )
+
+  );
+
+}
+
+
+/* ============================================================
+   ROUND DOWN TO TEN MINUTES
+   ============================================================ */
+
+function floorToTenMinutes(
+  date
+) {
+
+  const d =
+    new Date(date);
+
+
+  d.setUTCSeconds(
+    0,
+    0
+  );
+
+
+  d.setUTCMinutes(
+
+    Math.floor(
+
+      d.getUTCMinutes() / 10
+
+    ) * 10
+
+  );
+
+
+  return d;
+
+}
+
+
+/* ============================================================
+   PORTUGAL LOCAL TIME
+   ============================================================ */
+
+function formatPortugalTime(
+  date
+) {
+
+  return (
+
+    new Intl.DateTimeFormat(
+
+      "pt-PT",
+
+      {
+
+        timeZone:
+          "Europe/Lisbon",
+
+        day:
+          "2-digit",
+
+        month:
+          "2-digit",
+
+        hour:
+          "2-digit",
+
+        minute:
+          "2-digit",
+
+        hour12:
+          false
+
+      }
+
+    )
+
+    .format(date)
+
+  );
+
+}
+
+
+/* ============================================================
+   BUILD FRAME LIST
+   ============================================================ */
+
+function buildFrameList() {
+
+  const newest =
+    floorToTenMinutes(
+      new Date()
+    );
+
+
+  radarFrames = [];
+
+
+  for (
+
+    let i =
+      FRAME_COUNT - 1;
+
+    i >= 0;
+
+    i--
+
+  ) {
+
+    const date =
+      new Date(
+
+        newest.getTime()
+
+        -
+
+        i
+
+        *
+
+        FRAME_INTERVAL_MINUTES
+
+        *
+
+        60
+
+        *
+
+        1000
+
+      );
+
+
+    radarFrames.push({
+
+      date: date,
+
+      url:
+        radarURL(date),
+
+      loaded:
+        false
+
+    });
+
+  }
+
+
+  /*
+   * Index 0 = oldest
+   *
+   * Index 36 = newest
+   */
+
+  currentFrame =
+    radarFrames.length - 1;
+
+}
+
+
+/* ============================================================
+   LOAD AN IMAGE
+   ============================================================ */
+
+function loadImage(
+  frame
+) {
+
+  return new Promise(
+
+    resolve => {
+
+      const img =
+        new Image();
+
+
+      /*
+       * DO NOT set crossOrigin here.
+       *
+       * IPMA's server does not need to expose the image
+       * to canvas. Leaflet can display it normally.
+       */
+
+
+      img.decoding =
+        "async";
+
+
+      img.onload = () => {
+
+        frame.loaded =
+          true;
+
+        resolve(
+          true
+        );
+
+      };
+
+
+      img.onerror = () => {
+
+        frame.loaded =
+          false;
+
+        resolve(
+          false
+        );
+
+      };
+
+
+      img.src =
+        frame.url;
+
+    }
+
+  );
+
+}
+
+
+/* ============================================================
+   DISPLAY RADAR FRAME
+   ============================================================ */
+
+function displayRadarFrame(
+  index
+) {
+
+  if (
+
+    index < 0
+
+    ||
+
+    index >=
+      radarFrames.length
+
+  ) {
+
+    return;
+
+  }
+
+
+  const frame =
+    radarFrames[index];
+
+
+  if (!frame.loaded) {
+
+    document
+
+      .getElementById("status")
+
+      .textContent =
+
+      "Loading frame "
+
+      +
+
+      (index + 1)
+
+      +
+
+      " of "
+
+      +
+
+      FRAME_COUNT;
+
+    return;
+
+  }
+
+
+  currentFrame =
+    index;
+
+
+  /*
+   * IMPORTANT:
+   *
+   * We use ONE Leaflet ImageOverlay.
+   *
+   * We do not create a new overlay for every frame.
+   */
+
+  if (!radarLayer) {
+
+    radarLayer =
+
+      L.imageOverlay(
+
+        frame.url,
+
+        RADAR_BOUNDS,
+
+        {
+
+          opacity:
+            0.70,
+
+          interactive:
+            false,
+
+          zIndex:
+            100
+
+        }
+
+      )
+
+      .addTo(map);
+
+  }
+
+  else {
+
+    radarLayer.setUrl(
+      frame.url
+    );
+
+  }
+
+
+  radarLayer.bringToFront();
+
+
+  document
+
+    .getElementById("time")
+
+    .textContent =
+
+    formatPortugalTime(
+      frame.date
+    );
+
+
+  document
+
+    .getElementById("status")
+
+    .textContent =
+
+    "Frame "
+
+    +
+
+    (index + 1)
+
+    +
+
+    " of "
+
+    +
+
+    FRAME_COUNT;
+
+}
+
+
+/* ============================================================
+   INITIAL LOAD
+   ============================================================ */
+
+async function initializeRadar() {
+
+  buildFrameList();
+
+
+  /*
+   * FIRST:
+   *
+   * Load only the newest frame.
+   *
+   * This should make the radar appear quickly.
+   */
+
+  document
+
+    .getElementById("status")
+
+    .textContent =
+
+      "Loading latest radar…";
+
+
+  await loadImage(
+
+    radarFrames[
+
+      FRAME_COUNT - 1
+
+    ]
+
+  );
+
+
+  if (
+
+    radarFrames[
+
+      FRAME_COUNT - 1
+
+    ].loaded
+
+  ) {
+
+    displayRadarFrame(
+
+      FRAME_COUNT - 1
+
+    );
+
+  }
+
+  else {
+
+    document
+
+      .getElementById("status")
+
+      .textContent =
+
+        "Latest radar frame unavailable.";
+
+    return;
+
+  }
+
+
+  /*
+   * NOW:
+   *
+   * Load the remaining 36 frames in the background.
+   *
+   * We do not block display of the current frame.
+   */
+
+  loadHistory();
+
+}
+
+
+/* ============================================================
+   LOAD HISTORY
+   ============================================================ */
+
+async function loadHistory() {
+
+  let loaded =
+    1;
+
+
+  /*
+   * Load from newest backwards.
+   *
+   * Only four requests at a time.
+   *
+   * This avoids hammering IPMA and avoids creating a huge
+   * simultaneous memory/network load on an iPhone.
+   */
+
+  for (
+
+    let start =
+      FRAME_COUNT - 2;
+
+    start >= 0;
+
+    start -= 4
+
+  ) {
+
+    const batch = [];
+
+
+    for (
+
+      let i = start;
+
+      i > start - 4 && i >= 0;
+
+      i--
+
+    ) {
+
+      batch.push(
+        i
+      );
+
+    }
+
+
+    await Promise.all(
+
+      batch.map(
+
+        async index => {
+
+          const ok =
+            await loadImage(
+              radarFrames[index]
+            );
+
+
+          if (ok) {
+
+            loaded++;
+
+          }
+
+        }
+
+      )
+
+    );
+
+
+    document
+
+      .getElementById("status")
+
+      .textContent =
+
+      "Radar history "
+
+      +
+
+      loaded
+
+      +
+
+      "/"
+
+      +
+
+      FRAME_COUNT;
+
+
+    /*
+     * Give Safari/iPhone a little breathing room.
+     */
+
+    await new Promise(
+
+      resolve =>
+
+        setTimeout(
+
+          resolve,
+
+          100
+
+        )
+
+    );
+
+  }
+
+
+  document
+
+    .getElementById("status")
+
+    .textContent =
+
+      "Radar history ready";
+
+}
+
+
+/* ============================================================
+   PLAYBACK
+   ============================================================ */
+
+function stopPlayback() {
+
+  playing =
+    false;
+
+
+  if (playTimer) {
+
+    clearTimeout(
+      playTimer
+    );
+
+    playTimer =
+      null;
+
+  }
+
+
+  document
+
+    .getElementById("play")
+
+    .textContent =
+
+      "▶ Play";
+
+}
+
+
+/* ============================================================
+   ADVANCE PLAYBACK
+   ============================================================ */
+
+function advancePlayback() {
+
+  if (!playing) {
+
+    return;
+
+  }
+
+
+  if (
+
+    currentFrame
+    >=
+    FRAME_COUNT - 1
+
+  ) {
+
+    stopPlayback();
+
+    return;
+
+  }
+
+
+  const next =
+    currentFrame + 1;
+
+
+  /*
+   * Do not request another network image here.
+   *
+   * The history loader is responsible for filling the cache.
+   */
+
+  if (
+
+    !radarFrames[next].loaded
+
+  ) {
+
+    document
+
+      .getElementById("status")
+
+      .textContent =
+
+      "Waiting for radar history…";
+
+
+    playTimer =
+
+      setTimeout(
+
+        advancePlayback,
+
+        250
+
+      );
+
+    return;
+
+  }
+
+
+  displayRadarFrame(
+    next
+  );
+
+
+  playTimer =
+
+    setTimeout(
+
+      advancePlayback,
+
+      PLAYBACK_DELAY
+
+    );
+
+}
+
+
+/* ============================================================
+   PLAY BUTTON
+   ============================================================ */
+
+document
+
+  .getElementById("play")
+
+  .addEventListener(
+
+    "click",
+
+    () => {
+
+      if (playing) {
+
+        stopPlayback();
+
+        return;
+
+      }
+
+
+      /*
+       * Start at oldest frame.
+       */
+
+      if (
+
+        !radarFrames[0].loaded
+
+      ) {
+
+        document
+
+          .getElementById("status")
+
+          .textContent =
+
+          "History is still loading…";
+
+        return;
+
+      }
+
+
+      currentFrame =
+        0;
+
+
+      displayRadarFrame(
+        0
+      );
+
+
+      playing =
+        true;
+
+
+      document
+
+        .getElementById("play")
+
+        .textContent =
+
+        "⏸ Pause";
+
+
+      playTimer =
+
+        setTimeout(
+
+          advancePlayback,
+
+          PLAYBACK_DELAY
+
+        );
+
+    }
+
+  );
+
+
+/* ============================================================
+   PREVIOUS
+   ============================================================ */
+
+document
+
+  .getElementById("previous")
+
+  .addEventListener(
+
+    "click",
+
+    () => {
+
+      stopPlayback();
+
+
+      displayRadarFrame(
+
+        Math.max(
+
+          0,
+
+          currentFrame - 1
+
+        )
+
+      );
+
+    }
+
+  );
+
+
+/* ============================================================
+   NEXT
+   ============================================================ */
+
+document
+
+  .getElementById("next")
+
+  .addEventListener(
+
+    "click",
+
+    () => {
+
+      stopPlayback();
+
+
+      displayRadarFrame(
+
+        Math.min(
+
+          FRAME_COUNT - 1,
+
+          currentFrame + 1
+
+        )
+
+      );
+
+    }
+
+  );
+
+
+/* ============================================================
+   START
+   ============================================================ */
+
+initializeRadar();
+
+</script>
+
+</body>
+</html>
