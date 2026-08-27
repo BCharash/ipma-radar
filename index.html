@@ -179,6 +179,88 @@
       font-size: 9px;
     }
 
+
+    /* ============================================================
+       CURRENT LOCATION BUTTON
+       ============================================================ */
+
+    .location-control {
+      margin-top: 10px !important;
+    }
+
+    .location-button {
+      width: 40px;
+      height: 40px;
+
+      padding: 0;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-size: 0;
+
+      background: white;
+
+      border:
+        2px
+        solid
+        rgba(0,0,0,.25);
+
+      border-radius: 4px;
+
+      box-shadow:
+        0
+        1px
+        5px
+        rgba(0,0,0,.35);
+
+      cursor: pointer;
+    }
+
+    .location-button:active {
+      background: #e8e8e8;
+    }
+
+    .location-button svg {
+      width: 22px;
+      height: 22px;
+
+      fill: none;
+
+      stroke: #333;
+
+      stroke-width: 1.8;
+
+      stroke-linecap: round;
+
+      stroke-linejoin: round;
+    }
+
+    .location-button.locating svg {
+      animation:
+        locationPulse 1s infinite;
+    }
+
+    @keyframes locationPulse {
+
+      0% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: .45;
+        transform: scale(.82);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+    }
+
   </style>
 
 </head>
@@ -343,6 +425,343 @@ L.tileLayer(
 
 
 /* ============================================================
+   CURRENT LOCATION
+   ============================================================ */
+
+let locationMarker = null;
+
+let locationCircle = null;
+
+
+const LocationControl =
+  L.Control.extend({
+
+    options: {
+      position: "topright"
+    },
+
+    onAdd: function(map) {
+
+      const container =
+        L.DomUtil.create(
+          "div",
+          "leaflet-bar location-control"
+        );
+
+      const button =
+        L.DomUtil.create(
+          "button",
+          "location-button",
+          container
+        );
+
+      button.type = "button";
+
+      button.title =
+        "Use current location";
+
+      button.setAttribute(
+        "aria-label",
+        "Use current location"
+      );
+
+
+      button.innerHTML = `
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="3.2"
+          ></circle>
+
+          <path
+            d="M12 2.5v3"
+          ></path>
+
+          <path
+            d="M12 18.5v3"
+          ></path>
+
+          <path
+            d="M2.5 12h3"
+          ></path>
+
+          <path
+            d="M18.5 12h3"
+          ></path>
+
+          <circle
+            cx="12"
+            cy="12"
+            r="8.2"
+          ></circle>
+        </svg>
+      `;
+
+
+      L.DomEvent.disableClickPropagation(
+        container
+      );
+
+
+      L.DomEvent.on(
+
+        button,
+
+        "click",
+
+        function() {
+
+          if (
+            !navigator.geolocation
+          ) {
+
+            document
+              .getElementById("status")
+              .textContent =
+                "Location is not available.";
+
+            return;
+
+          }
+
+
+          button.classList.add(
+            "locating"
+          );
+
+
+          document
+            .getElementById("status")
+            .textContent =
+              "Finding current location…";
+
+
+          map.locate({
+
+            setView: false,
+
+            enableHighAccuracy: true,
+
+            maximumAge: 30000,
+
+            timeout: 10000
+
+          });
+
+        }
+
+      );
+
+
+      return container;
+
+    }
+
+  });
+
+
+new LocationControl()
+  .addTo(map);
+
+
+/* ============================================================
+   LOCATION FOUND
+   ============================================================ */
+
+map.on(
+
+  "locationfound",
+
+  function(e) {
+
+    const button =
+      document.querySelector(
+        ".location-button"
+      );
+
+
+    if (button) {
+
+      button.classList.remove(
+        "locating"
+      );
+
+    }
+
+
+    /*
+     * Remove previous location display.
+     */
+
+    if (locationMarker) {
+
+      map.removeLayer(
+        locationMarker
+      );
+
+    }
+
+
+    if (locationCircle) {
+
+      map.removeLayer(
+        locationCircle
+      );
+
+    }
+
+
+    /*
+     * Show current position.
+     */
+
+    locationMarker =
+      L.circleMarker(
+
+        e.latlng,
+
+        {
+
+          radius: 7,
+
+          weight: 3,
+
+          fillOpacity: 1
+
+        }
+
+      ).addTo(map);
+
+
+    /*
+     * Show GPS accuracy.
+     */
+
+    locationCircle =
+      L.circle(
+
+        e.latlng,
+
+        {
+
+          radius: e.accuracy,
+
+          weight: 1,
+
+          fillOpacity: 0.05
+
+        }
+
+      ).addTo(map);
+
+
+    /*
+     * Center the map on the current location.
+     *
+     * Keep at least the app's normal local zoom.
+     */
+
+    map.setView(
+
+      e.latlng,
+
+      Math.max(
+
+        map.getZoom(),
+
+        11
+
+      ),
+
+      {
+        animate: false
+      }
+
+    );
+
+
+    document
+      .getElementById("status")
+      .textContent =
+        "Current location";
+
+  }
+
+);
+
+
+/* ============================================================
+   LOCATION ERROR
+   ============================================================ */
+
+map.on(
+
+  "locationerror",
+
+  function(e) {
+
+    const button =
+      document.querySelector(
+        ".location-button"
+      );
+
+
+    if (button) {
+
+      button.classList.remove(
+        "locating"
+      );
+
+    }
+
+
+    let message =
+      "Unable to determine location.";
+
+
+    if (
+      e.code === 1
+    ) {
+
+      message =
+        "Location permission was denied.";
+
+    }
+
+    else if (
+      e.code === 2
+    ) {
+
+      message =
+        "Current location is unavailable.";
+
+    }
+
+    else if (
+      e.code === 3
+    ) {
+
+      message =
+        "Location request timed out.";
+
+    }
+
+
+    document
+      .getElementById("status")
+      .textContent =
+        message;
+
+  }
+
+);
+
+
+/* ============================================================
    BEACH MARKER
    ============================================================ */
 
@@ -460,7 +879,7 @@ showBeach(
  *
  *   new L.LatLngBounds(
  *     new L.latLng(34.011513, -12.454795),
- *     new L.latLng(43.792862, -4.345465)
+ *     new L.latlng(43.792862, -4.345465)
  *   )
  *
  * We use the same geographic registration here.
