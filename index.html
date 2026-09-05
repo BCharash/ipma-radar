@@ -169,6 +169,66 @@ select {
 /* ==========================================================
    STATUS
    ========================================================== */
+/* ==========================================================
+   RADAR LEGEND
+   ========================================================== */
+
+#radarLegend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 1000;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  padding: 6px 7px;
+
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 5px;
+
+  font-size: 10px;
+  line-height: 1;
+}
+
+.legendTitle {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.legendScale {
+  display: flex;
+  align-items: stretch;
+}
+
+.legendBar {
+  width: 14px;
+  height: 238px;
+
+  background: linear-gradient(
+    to top,
+    #0000ff 0%,
+    #00ffff 18%,
+    #00ff00 38%,
+    #ffff00 58%,
+    #ff8000 75%,
+    #ff0000 88%,
+    #ff00ff 100%
+  );
+
+  border-radius: 2px;
+}
+
+.legendLabels {
+  height: 238px;
+  margin-left: 5px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
 
 #status {
   position: absolute;
@@ -401,6 +461,35 @@ select {
 
 
   <div id="map"></div>
+
+  <!-- RADAR LEGEND -->
+  <div id="radarLegend">
+    <div class="legendTitle">mm/h</div>
+
+    <div class="legendScale">
+      <div class="legendBar"></div>
+
+      <div class="legendLabels">
+        <span>&gt;300</span>
+        <span>200</span>
+        <span>100</span>
+        <span>70</span>
+        <span>50</span>
+        <span>40</span>
+        <span>30</span>
+        <span>20</span>
+        <span>10</span>
+        <span>8</span>
+        <span>6</span>
+        <span>4</span>
+        <span>3</span>
+        <span>2</span>
+        <span>1</span>
+        <span>0.5</span>
+        <span>0.1</span>
+      </div>
+    </div>
+  </div>
 
   <div id="status"></div>
 
