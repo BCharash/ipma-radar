@@ -286,6 +286,34 @@ select {
         <option value="20">20 min</option>
       </select>
 
+      
+      <!-- REFRESH -->
+
+      <button
+        id="refreshButton"
+        class="control-button"
+        type="button"
+        aria-label="Refresh radar"
+        title="Refresh"
+      >
+
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+
+          <path d="M20 11a8.1 8.1 0 0 0-15.5-3M4 5v4h4"></path>
+
+          <path d="M4 13a8.1 8.1 0 0 0 15.5 3M20 19v-4h-4"></path>
+
+        </svg>
+
+      </button>
+
 
       <!-- PREVIOUS -->
 
@@ -499,6 +527,12 @@ const intervalSelect =
   document.getElementById(
     "intervalSelect"
   );
+
+const refreshButton =
+  document.getElementById(
+    "refreshButton"
+  );
+
 
 const previousButton =
   document.getElementById(
@@ -1916,6 +1950,12 @@ intervalSelect.addEventListener(
   }
 );
 
+refreshButton.addEventListener(
+  "click",
+  function() {
+    rebuildRadar();
+  }
+);
 
 previousButton.addEventListener(
   "click",
