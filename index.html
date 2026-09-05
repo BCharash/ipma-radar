@@ -1,330 +1,363 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  >
-
-  <meta
-    name="apple-mobile-web-app-capable"
-    content="yes"
-  >
-
-  <meta
-    name="apple-mobile-web-app-status-bar-style"
-    content="black-translucent"
-  >
-
-  <meta
-    name="apple-mobile-web-app-title"
-    content="IPMA Radar"
-  >
-
-  <title>IPMA Radar Test</title>
-
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  >
-
-  <style>
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        Helvetica,
-        Arial,
-        sans-serif;
-
-      background: #f2f2f2;
-    }
-
-    #app {
-      width: 100%;
-      height: 100%;
-
-      display: flex;
-      flex-direction: column;
-    }
-
-    #controls {
-      flex: 0 0 auto;
-
-      background: rgba(255,255,255,.97);
-
-      padding:
-        calc(env(safe-area-inset-top) + 8px)
-        10px
-        8px
-        10px;
-
-      border-bottom: 1px solid #ccc;
-
-      z-index: 1000;
-    }
-
-    .top-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      flex-wrap: wrap;
-    }
-
-    .title {
-      font-size: 17px;
-      font-weight: 600;
-
-      margin-right: auto;
-    }
-
-    button,
-    select {
-      font: inherit;
-      font-size: 14px;
-
-      min-height: 36px;
-
-      padding:
-        5px
-        9px;
-
-      border:
-        1px solid #aaa;
-
-      border-radius: 7px;
-
-      background: white;
-    }
-
-    button:active {
-      background: #e8e8e8;
-    }
-
-    #time {
-      width: 100%;
-
-      margin-top: 5px;
-
-      font-size: 13px;
-
-      color: #555;
-
-      text-align: center;
-
-      font-variant-numeric:
-        tabular-nums;
-    }
-
-    #status {
-      width: 100%;
-
-      margin-top: 3px;
-
-      font-size: 11px;
-
-      color: #777;
-
-      text-align: center;
-    }
-
-    #map {
-      flex: 1 1 auto;
-
-      min-height: 0;
-
-      width: 100%;
-    }
-
-    .beach-label {
-      background: white;
-
-      border:
-        1px solid #999;
-
-      border-radius: 4px;
-
-      padding:
-        2px
-        5px;
-
-      font-size: 11px;
-
-      font-weight: 600;
-
-      box-shadow:
-        0
-        1px
-        3px
-        rgba(0,0,0,.25);
-    }
-
-    .leaflet-control-attribution {
-      font-size: 9px;
-    }
-
-
-    /* ============================================================
-       CURRENT LOCATION BUTTON
-       ============================================================ */
-
-    .location-control {
-      margin-top: 10px !important;
-    }
-
-    .location-button {
-      width: 40px;
-      height: 40px;
-
-      padding: 0;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      font-size: 0;
-
-      background: white;
-
-      border:
-        2px
-        solid
-        rgba(0,0,0,.25);
-
-      border-radius: 4px;
-
-      box-shadow:
-        0
-        1px
-        5px
-        rgba(0,0,0,.35);
-
-      cursor: pointer;
-    }
-
-    .location-button:active {
-      background: #e8e8e8;
-    }
-
-    .location-button svg {
-      width: 22px;
-      height: 22px;
-
-      fill: none;
-
-      stroke: #333;
-
-      stroke-width: 1.8;
-
-      stroke-linecap: round;
-
-      stroke-linejoin: round;
-    }
-
-    .location-button.locating svg {
-      animation:
-        locationPulse 1s infinite;
-    }
-
-    @keyframes locationPulse {
-
-      0% {
-        opacity: 1;
-        transform: scale(1);
-      }
-
-      50% {
-        opacity: .45;
-        transform: scale(.82);
-      }
-
-      100% {
-        opacity: 1;
-        transform: scale(1);
-      }
-
-    }
-
-  </style>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#ffffff">
+
+<title>IPMA Radar</title>
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  crossorigin=""
+>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #fff;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================
+   HEADER
+   ========================================================== */
+
+#header {
+  flex: 0 0 auto;
+  width: 100%;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+  padding: 8px 10px;
+  z-index: 1000;
+}
+
+#controls {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#title {
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-right: 2px;
+}
+
+select {
+  height: 34px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background: #fff;
+  padding: 0 7px;
+  font-size: 14px;
+  color: #222;
+}
+
+#historySelect {
+  min-width: 92px;
+}
+
+#intervalSelect {
+  min-width: 100px;
+}
+
+.control-button {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  padding: 0;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #222;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.control-button:hover {
+  background: #f3f3f3;
+}
+
+.control-button:active {
+  background: #e8e8e8;
+}
+
+.control-button svg {
+  width: 19px;
+  height: 19px;
+  display: block;
+}
+
+
+/* ==========================================================
+   MAP
+   ========================================================== */
+
+#map {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.leaflet-control-zoom a {
+  width: 34px !important;
+  height: 34px !important;
+  line-height: 34px !important;
+  font-size: 20px !important;
+}
+
+
+/* ==========================================================
+   LOCATION CONTROL
+   ========================================================== */
+
+.location-control {
+  width: 34px;
+  height: 34px;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,.2);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.location-control:hover {
+  background: #f4f4f4;
+}
+
+.location-control svg {
+  width: 19px;
+  height: 19px;
+}
+
+
+/* ==========================================================
+   STATUS
+   ========================================================== */
+
+#status {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 1100;
+  background: rgba(255,255,255,.92);
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 12px;
+  color: #333;
+  pointer-events: none;
+  display: none;
+  white-space: nowrap;
+}
+
+
+/* ==========================================================
+   FRAME COUNTER
+   ========================================================== */
+
+#frameCounter {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 1050;
+
+  background: rgba(255,255,255,.88);
+  border: 1px solid rgba(0,0,0,.20);
+  border-radius: 5px;
+
+  padding: 4px 8px;
+
+  font-size: 12px;
+  color: #333;
+
+  pointer-events: none;
+  white-space: nowrap;
+
+  display: none;
+}
+
+
+/* ==========================================================
+   MOBILE
+   ========================================================== */
+
+@media (max-width:600px) {
+
+  #header {
+    padding: 6px 7px;
+  }
+
+  #controls {
+    gap: 4px;
+  }
+
+  #title {
+    font-size: 15px;
+  }
+
+  select {
+    height: 32px;
+    font-size: 13px;
+    padding-left: 5px;
+    padding-right: 4px;
+  }
+
+  #historySelect {
+    min-width: 76px;
+  }
+
+  #intervalSelect {
+    min-width: 82px;
+  }
+
+  .control-button {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
+}
+</style>
 </head>
-
 
 <body>
 
 <div id="app">
 
-  <div id="controls">
+  <div id="header">
 
-    <div class="top-row">
+    <div id="controls">
 
-      <div class="title">
-        IPMA Radar Test
-      </div>
+      <div id="title">IPMA Radar</div>
 
-      <select id="beachSelect">
-
-        <option value="santarita">
-          Santa Rita
-        </option>
-
-        <option value="moledo">
-          Moledo
-        </option>
-
-        <option value="tavira">
-          Tavira
-        </option>
-
+      <select
+        id="historySelect"
+        aria-label="Radar history"
+      >
+        <option value="1">1 h</option>
+        <option value="2">2 h</option>
+        <option value="3" selected>3 h</option>
       </select>
 
-      <button
-        id="previous"
-        type="button"
+      <select
+        id="intervalSelect"
+        aria-label="Frame interval"
       >
-        ◀
+        <option value="5" selected>5 min</option>
+        <option value="10">10 min</option>
+        <option value="15">15 min</option>
+        <option value="20">20 min</option>
+      </select>
+
+
+      <!-- PREVIOUS -->
+
+      <button
+        id="previousButton"
+        class="control-button"
+        type="button"
+        aria-label="Previous radar frame"
+        title="Previous"
+      >
+
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="11 17 6 12 11 7"></polyline>
+          <line x1="18" y1="12" x2="6" y2="12"></line>
+        </svg>
+
       </button>
 
-      <button
-        id="play"
-        type="button"
-      >
-        ▶ Play
-      </button>
+
+      <!-- PLAY / PAUSE -->
 
       <button
-        id="next"
+        id="playButton"
+        class="control-button"
         type="button"
+        aria-label="Play radar animation"
+        title="Play"
       >
-        ▶
+
+        <svg
+          id="playIcon"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
+          <polygon points="8,5 19,12 8,19"></polygon>
+        </svg>
+
+        <svg
+          id="pauseIcon"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          style="display:none"
+        >
+          <rect x="6" y="5" width="4" height="14"></rect>
+          <rect x="14" y="5" width="4" height="14"></rect>
+        </svg>
+
       </button>
 
-    </div>
 
+      <!-- NEXT -->
 
-    <div id="time">
-      Loading radar…
-    </div>
+      <button
+        id="nextButton"
+        class="control-button"
+        type="button"
+        aria-label="Next radar frame"
+        title="Next"
+      >
 
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="13 7 18 12 13 17"></polyline>
+          <line x1="6" y1="12" x2="18" y2="12"></line>
+        </svg>
 
-    <div id="status">
-      Starting…
+      </button>
+
     </div>
 
   </div>
@@ -332,1471 +365,1357 @@
 
   <div id="map"></div>
 
+  <div id="status"></div>
+
+  <div id="frameCounter"></div>
+
 </div>
 
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  crossorigin=""
+></script>
 
 
 <script>
+"use strict";
 
-/* ============================================================
-   BEACHES
-   ============================================================ */
 
-const beaches = {
-
-  moledo: {
-    name: "Praia de Moledo",
-    lat: 41.84945,
-    lon: -8.86666
-  },
-
-  santarita: {
-    name: "Praia de Santa Rita",
-    lat: 39.17454,
-    lon: -9.35688
-  },
-
-  tavira: {
-    name: "Praia da Ilha de Tavira",
-    lat: 37.111478,
-    lon: -7.619766
-  }
-
-};
-
-
-/* ============================================================
-   MAP
-   ============================================================ */
-
-const map =
-  L.map("map", {
-
-    zoomControl: true,
-
-    minZoom: 6,
-
-    maxZoom: 12
-
-  });
-
-
-/*
- * Start with Portugal rather than all of Iberia.
- */
-
-const portugalBounds =
-  L.latLngBounds(
-
-    [36.80, -9.60],
-
-    [42.15, -6.10]
-
-  );
-
-
-map.fitBounds(
-
-  portugalBounds,
-
-  {
-    padding: [5,5]
-  }
-
-);
-
-
-L.tileLayer(
-
-  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-
-  {
-
-    maxZoom: 19,
-
-    attribution:
-      "© OpenStreetMap contributors"
-
-  }
-
-).addTo(map);
-
-
-/* ============================================================
-   CURRENT LOCATION
-   ============================================================ */
-
-let locationMarker = null;
-
-let locationCircle = null;
-
-
-const LocationControl =
-  L.Control.extend({
-
-    options: {
-      position: "topright"
-    },
-
-    onAdd: function(map) {
-
-      const container =
-        L.DomUtil.create(
-          "div",
-          "leaflet-bar location-control"
-        );
-
-      const button =
-        L.DomUtil.create(
-          "button",
-          "location-button",
-          container
-        );
-
-      button.type = "button";
-
-      button.title =
-        "Use current location";
-
-      button.setAttribute(
-        "aria-label",
-        "Use current location"
-      );
-
-
-      button.innerHTML = `
-        <svg
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <circle
-            cx="12"
-            cy="12"
-            r="3.2"
-          ></circle>
-
-          <path
-            d="M12 2.5v3"
-          ></path>
-
-          <path
-            d="M12 18.5v3"
-          ></path>
-
-          <path
-            d="M2.5 12h3"
-          ></path>
-
-          <path
-            d="M18.5 12h3"
-          ></path>
-
-          <circle
-            cx="12"
-            cy="12"
-            r="8.2"
-          ></circle>
-        </svg>
-      `;
-
-
-      L.DomEvent.disableClickPropagation(
-        container
-      );
-
-
-      L.DomEvent.on(
-
-        button,
-
-        "click",
-
-        function() {
-
-          if (
-            !navigator.geolocation
-          ) {
-
-            document
-              .getElementById("status")
-              .textContent =
-                "Location is not available.";
-
-            return;
-
-          }
-
-
-          button.classList.add(
-            "locating"
-          );
-
-
-          document
-            .getElementById("status")
-            .textContent =
-              "Finding current location…";
-
-
-          navigator.geolocation.getCurrentPosition(
-
-  function(position) {
-
-    const lat =
-      position.coords.latitude;
-
-    const lon =
-      position.coords.longitude;
-
-    const accuracy =
-      position.coords.accuracy;
-
-    const latlng =
-      L.latLng(lat, lon);
-
-
-    /*
-     * Remove previous location display.
-     */
-
-    if (locationMarker) {
-
-      map.removeLayer(
-        locationMarker
-      );
-
-    }
-
-    if (locationCircle) {
-
-      map.removeLayer(
-        locationCircle
-      );
-
-    }
-
-
-    /*
-     * Show current position.
-     */
-
-    locationMarker =
-      L.circleMarker(
-
-        latlng,
-
-        {
-          radius: 7,
-          weight: 3,
-          fillOpacity: 1
-        }
-
-      ).addTo(map);
-
-
-    /*
-     * Show reported GPS accuracy.
-     */
-
-    locationCircle =
-      L.circle(
-
-        latlng,
-
-        {
-          radius: accuracy,
-          weight: 1,
-          fillOpacity: 0.05
-        }
-
-      ).addTo(map);
-
-
-    /*
-     * Center the map on the current location.
-     */
-
-    map.setView(
-
-      latlng,
-
-      Math.max(
-        map.getZoom(),
-        11
-      ),
-
-      {
-        animate: false
-      }
-
-    );
-
-
-    button.classList.remove(
-      "locating"
-    );
-
-
-    document
-      .getElementById("status")
-      .textContent =
-        "Current location";
-
-  },
-
-
-  function(error) {
-
-    button.classList.remove(
-      "locating"
-    );
-
-
-    let message =
-      "Unable to determine location.";
-
-
-    if (error.code === 1) {
-
-      message =
-        "Location permission was denied.";
-
-    }
-
-    else if (error.code === 2) {
-
-      message =
-        "Current location is unavailable.";
-
-    }
-
-    else if (error.code === 3) {
-
-      message =
-        "Location request timed out.";
-
-    }
-
-
-    document
-      .getElementById("status")
-      .textContent =
-        message;
-
-
-    console.log(
-      "Geolocation error:",
-      error.code,
-      error.message
-    );
-
-  },
-
-  {
-    enableHighAccuracy: true,
-    maximumAge: 30000,
-    timeout: 10000
-  }
-
-);
-
-        }
-
-      );
-
-
-      return container;
-
-    }
-
-  });
-
-
-new LocationControl()
-  .addTo(map);
-
-
-/* ============================================================
-   LOCATION FOUND
-   ============================================================ */
-
-map.on(
-
-  "locationfound",
-
-  function(e) {
-
-    const button =
-      document.querySelector(
-        ".location-button"
-      );
-
-
-    if (button) {
-
-      button.classList.remove(
-        "locating"
-      );
-
-    }
-
-
-    /*
-     * Remove previous location display.
-     */
-
-    if (locationMarker) {
-
-      map.removeLayer(
-        locationMarker
-      );
-
-    }
-
-
-    if (locationCircle) {
-
-      map.removeLayer(
-        locationCircle
-      );
-
-    }
-
-
-    /*
-     * Show current position.
-     */
-
-    locationMarker =
-      L.circleMarker(
-
-        e.latlng,
-
-        {
-
-          radius: 7,
-
-          weight: 3,
-
-          fillOpacity: 1
-
-        }
-
-      ).addTo(map);
-
-
-    /*
-     * Show GPS accuracy.
-     */
-
-    locationCircle =
-      L.circle(
-
-        e.latlng,
-
-        {
-
-          radius: e.accuracy,
-
-          weight: 1,
-
-          fillOpacity: 0.05
-
-        }
-
-      ).addTo(map);
-
-
-    /*
-     * Center the map on the current location.
-     *
-     * Keep at least the app's normal local zoom.
-     */
-
-    map.setView(
-
-      e.latlng,
-
-      Math.max(
-
-        map.getZoom(),
-
-        11
-
-      ),
-
-      {
-        animate: false
-      }
-
-    );
-
-
-    document
-      .getElementById("status")
-      .textContent =
-        "Current location";
-
-  }
-
-);
-
-
-/* ============================================================
-   LOCATION ERROR
-   ============================================================ */
-
-map.on(
-
-  "locationerror",
-
-  function(e) {
-
-    const button =
-      document.querySelector(
-        ".location-button"
-      );
-
-
-    if (button) {
-
-      button.classList.remove(
-        "locating"
-      );
-
-    }
-
-
-    let message =
-      "Unable to determine location.";
-
-
-    if (
-      e.code === 1
-    ) {
-
-      message =
-        "Location permission was denied.";
-
-    }
-
-    else if (
-      e.code === 2
-    ) {
-
-      message =
-        "Current location is unavailable.";
-
-    }
-
-    else if (
-      e.code === 3
-    ) {
-
-      message =
-        "Location request timed out.";
-
-    }
-
-
-    document
-      .getElementById("status")
-      .textContent =
-        message;
-
-  }
-
-);
-
-
-/* ============================================================
-   BEACH MARKER
-   ============================================================ */
-
-let beachMarker = null;
-
-
-function showBeach(key) {
-
-  const beach =
-    beaches[key];
-
-
-  if (beachMarker) {
-
-    map.removeLayer(
-      beachMarker
-    );
-
-  }
-
-
-  beachMarker =
-    L.circleMarker(
-
-      [
-        beach.lat,
-        beach.lon
-      ],
-
-      {
-
-        radius: 7,
-
-        weight: 2,
-
-        fillOpacity: 1
-
-      }
-
-    )
-
-    .addTo(map)
-
-    .bindTooltip(
-
-      beach.name,
-
-      {
-
-        permanent: true,
-
-        direction: "right",
-
-        offset: [8,0],
-
-        className:
-          "beach-label"
-
-      }
-
-    );
-
-
-  map.setView(
-
-    [
-      beach.lat,
-      beach.lon
-    ],
-
-    9,
-
-    {
-      animate: false
-    }
-
-  );
-
-}
-
-
-document
-
-  .getElementById("beachSelect")
-
-  .addEventListener(
-
-    "change",
-
-    event => {
-
-      showBeach(
-        event.target.value
-      );
-
-    }
-
-  );
-
-
-showBeach(
-  "santarita"
-);
-
-
-/* ============================================================
+/* ==========================================================
    IPMA RADAR
-   ============================================================ */
-
-/*
- * IPMA's own mapbuilder-pt.js uses these bounds for
- * the Portugal radar ImageOverlay.
- *
- * Source:
- *
- *   new L.LatLngBounds(
- *     new L.latLng(34.011513, -12.454795),
- *     new L.latlng(43.792862, -4.345465)
- *   )
- *
- * We use the same geographic registration here.
- */
-
-const RADAR_BOUNDS = [
-
-  [
-
-    34.011513,
-    -12.454795
-
-  ],
-
-  [
-
-    43.792862,
-    -4.345465
-
-  ]
-
-];
-
+   ========================================================== */
 
 const RADAR_BASE_URL =
   "https://www.ipma.pt/resources.www/transf/radar/por/";
 
 
 /*
- * Six hours of history.
- *
- * 10-minute interval.
- *
- * 36 intervals + both endpoints = 37 frames.
+ * These are IPMA's own radar image bounds.
  */
-
-const FRAME_INTERVAL_MINUTES = 10;
-
-const FRAME_COUNT = 37;
+const RADAR_BOUNDS = [
+  [34.011513, -12.454795],
+  [43.792862, -4.345465]
+];
 
 
 /*
- * Animation speed.
- *
- * Each radar frame represents ten minutes.
- *
- * 500 ms gives a 37-frame animation of about 18 seconds.
+ * IPMA radar production interval.
  */
+const IPMA_FRAME_MINUTES = 5;
 
-const PLAYBACK_DELAY = 500;
+
+/*
+ * Playback speed.
+
+ * This is deliberately much faster than the real-world
+ * interval represented by each frame. The result is a
+ * smooth time-lapse rather than a frame-by-frame slideshow.
+ */
+const PLAYBACK_DELAY = 180;
 
 
-/* ============================================================
-   FRAME STATE
-   ============================================================ */
+/*
+ * Santa Rita fallback location.
+
+ * Zoom is deliberately TWO levels farther out than the
+ * previous version.
+ */
+const DEFAULT_LOCATION = {
+  lat: 39.0867,
+  lon: -9.3777,
+  zoom: 7
+};
+
+
+/* ==========================================================
+   APPLICATION STATE
+   ========================================================== */
+
+let map = null;
+
+
+/*
+ * Instead of one ImageOverlay, we maintain one already-loaded
+ * ImageOverlay for every radar frame.
+
+ * This is the important change for smooth playback.
+ */
+let radarOverlays = [];
+
 
 let radarFrames = [];
 
-let currentFrame =
-  FRAME_COUNT - 1;
 
-let radarLayer = null;
+let currentFrameIndex = 0;
+
 
 let playing = false;
 
-let playTimer = null;
+
+let playbackTimer = null;
 
 
-/* ============================================================
-   RADAR FILENAME
-   ============================================================ */
+let playbackView = null;
 
-function radarFilename(
-  date
+
+let loadGeneration = 0;
+
+
+let locationMarker = null;
+
+
+let locationAccuracy = null;
+
+
+/*
+ * Cache of actual HTMLImageElements.
+
+ * Once an image has loaded and decoded, we keep the element
+ * alive. It can therefore be displayed instantly later.
+ */
+const imageCache = new Map();
+
+
+/* ==========================================================
+   DOM
+   ========================================================== */
+
+const historySelect =
+  document.getElementById(
+    "historySelect"
+  );
+
+const intervalSelect =
+  document.getElementById(
+    "intervalSelect"
+  );
+
+const previousButton =
+  document.getElementById(
+    "previousButton"
+  );
+
+const playButton =
+  document.getElementById(
+    "playButton"
+  );
+
+const nextButton =
+  document.getElementById(
+    "nextButton"
+  );
+
+const playIcon =
+  document.getElementById(
+    "playIcon"
+  );
+
+const pauseIcon =
+  document.getElementById(
+    "pauseIcon"
+  );
+
+const statusElement =
+  document.getElementById(
+    "status"
+  );
+
+const frameCounter =
+  document.getElementById(
+    "frameCounter"
+  );
+
+
+/* ==========================================================
+   STATUS
+   ========================================================== */
+
+function showStatus(message) {
+
+  statusElement.textContent =
+    message;
+
+  statusElement.style.display =
+    "block";
+}
+
+
+function hideStatus() {
+
+  statusElement.style.display =
+    "none";
+}
+
+
+/* ==========================================================
+   FRAME COUNTER
+   ========================================================== */
+
+function updateFrameCounter() {
+
+  if (!radarFrames.length) {
+
+    frameCounter.style.display =
+      "none";
+
+    return;
+  }
+
+  frameCounter.textContent =
+    "Image " +
+    (currentFrameIndex + 1) +
+    " of " +
+    radarFrames.length;
+
+  frameCounter.style.display =
+    "block";
+}
+
+
+/* ==========================================================
+   MAP INITIALIZATION
+   ========================================================== */
+
+function initializeMap() {
+
+  map =
+    L.map(
+      "map",
+      {
+        zoomAnimation:false,
+        fadeAnimation:false,
+        markerZoomAnimation:false
+      }
+    );
+
+
+  L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+      maxZoom:19,
+
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }
+  ).addTo(map);
+
+
+  map.setView(
+    [
+      DEFAULT_LOCATION.lat,
+      DEFAULT_LOCATION.lon
+    ],
+    DEFAULT_LOCATION.zoom,
+    {
+      animate:false
+    }
+  );
+
+
+  addLocationControl();
+
+
+  setTimeout(
+    function() {
+
+      map.invalidateSize(false);
+
+    },
+    50
+  );
+}
+
+
+/* ==========================================================
+   LOCATION CONTROL
+   ========================================================== */
+
+function addLocationControl() {
+
+  const LocationControl =
+    L.Control.extend({
+
+      options:{
+        position:"topright"
+      },
+
+
+      onAdd:function() {
+
+        const button =
+          L.DomUtil.create(
+            "button",
+            "location-control"
+          );
+
+
+        button.type =
+          "button";
+
+
+        button.title =
+          "Current location";
+
+
+        button.setAttribute(
+          "aria-label",
+          "Current location"
+        );
+
+
+        button.innerHTML = `
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="3"></circle>
+            <line x1="12" y1="2" x2="12" y2="6"></line>
+            <line x1="12" y1="18" x2="12" y2="22"></line>
+            <line x1="2" y1="12" x2="6" y2="12"></line>
+            <line x1="18" y1="12" x2="22" y2="12"></line>
+          </svg>
+        `;
+
+
+        L.DomEvent.disableClickPropagation(
+          button
+        );
+
+
+        L.DomEvent.on(
+          button,
+          "click",
+          function() {
+
+            useCurrentLocation({
+              silent:false
+            });
+
+          }
+        );
+
+
+        return button;
+      }
+
+    });
+
+
+  map.addControl(
+    new LocationControl()
+  );
+}
+
+
+/* ==========================================================
+   CURRENT LOCATION
+   ========================================================== */
+
+function useCurrentLocation(
+  options = {}
 ) {
+
+  const silent =
+    options.silent === true;
+
+
+  if (!navigator.geolocation) {
+
+    if (!silent) {
+
+      alert(
+        "Geolocation is not available in this browser."
+      );
+
+    }
+
+    return;
+  }
+
+
+  if (!silent) {
+
+    showStatus(
+      "Finding your location…"
+    );
+
+  }
+
+
+  navigator.geolocation.getCurrentPosition(
+
+    function(position) {
+
+      const lat =
+        position.coords.latitude;
+
+      const lon =
+        position.coords.longitude;
+
+      const accuracy =
+        position.coords.accuracy;
+
+
+      if (locationMarker) {
+
+        map.removeLayer(
+          locationMarker
+        );
+
+      }
+
+
+      if (locationAccuracy) {
+
+        map.removeLayer(
+          locationAccuracy
+        );
+
+      }
+
+
+      locationAccuracy =
+        L.circle(
+          [lat,lon],
+          {
+            radius:accuracy,
+            weight:1,
+            fillOpacity:.08
+          }
+        ).addTo(map);
+
+
+      locationMarker =
+        L.circleMarker(
+          [lat,lon],
+          {
+            radius:6,
+            weight:2,
+            fillOpacity:.9
+          }
+        ).addTo(map);
+
+
+      /*
+       * Previous minimum zoom was 11.
+
+       * We now go 3 levels farther out: 8.
+       */
+      map.setView(
+        [lat,lon],
+        Math.max(
+          map.getZoom(),
+          8
+        ),
+        {
+          animate:false
+        }
+      );
+
+
+      if (!silent) {
+        hideStatus();
+      }
+
+    },
+
+
+    function() {
+
+      if (!silent) {
+
+        hideStatus();
+
+        alert(
+          "Unable to determine your location."
+        );
+
+      }
+
+    },
+
+
+    {
+      enableHighAccuracy:true,
+      timeout:10000,
+      maximumAge:300000
+    }
+
+  );
+}
+
+
+/* ==========================================================
+   RADAR FILENAME
+   ========================================================== */
+
+function radarFilename(date) {
 
   const yyyy =
     date.getUTCFullYear();
 
-
   const mm =
     String(
-      date.getUTCMonth() + 1
-    )
-    .padStart(2,"0");
-
+      date.getUTCMonth()+1
+    ).padStart(2,"0");
 
   const dd =
     String(
       date.getUTCDate()
-    )
-    .padStart(2,"0");
-
+    ).padStart(2,"0");
 
   const hh =
     String(
       date.getUTCHours()
-    )
-    .padStart(2,"0");
-
+    ).padStart(2,"0");
 
   const min =
     String(
       date.getUTCMinutes()
-    )
-    .padStart(2,"0");
+    ).padStart(2,"0");
 
 
   return (
-
-    "pcr-"
-
-    + yyyy
-
-    + "-"
-
-    + mm
-
-    + "-"
-
-    + dd
-
-    + "T"
-
-    + hh
-
-    + min
-
-    + ".png"
-
+    "pcr-" +
+    yyyy +
+    "-" +
+    mm +
+    "-" +
+    dd +
+    "T" +
+    hh +
+    min +
+    ".png"
   );
-
 }
 
 
-/* ============================================================
-   RADAR URL
-   ============================================================ */
-
-function radarURL(
-  date
-) {
+function radarURL(date) {
 
   return (
-
-    RADAR_BASE_URL
-
-    +
-
-    radarFilename(
-      date
-    )
-
+    RADAR_BASE_URL +
+    radarFilename(date)
   );
-
 }
 
 
-/* ============================================================
-   ROUND DOWN TO TEN MINUTES
-   ============================================================ */
+/* ==========================================================
+   FIVE-MINUTE TIME GRID
+   ========================================================== */
 
-function floorToTenMinutes(
-  date
-) {
+function floorToFiveMinutes(date) {
 
   const d =
     new Date(date);
-
 
   d.setUTCSeconds(
     0,
     0
   );
 
-
   d.setUTCMinutes(
-
     Math.floor(
-
-      d.getUTCMinutes() / 10
-
-    ) * 10
-
+      d.getUTCMinutes() /
+      IPMA_FRAME_MINUTES
+    ) *
+    IPMA_FRAME_MINUTES
   );
-
 
   return d;
-
 }
 
 
-/* ============================================================
-   PORTUGAL LOCAL TIME
-   ============================================================ */
+/* ==========================================================
+   TEST RADAR IMAGE
+   ========================================================== */
 
-function formatPortugalTime(
-  date
-) {
+function testImage(url) {
 
-  return (
+  return new Promise(
+    function(resolve) {
 
-    new Intl.DateTimeFormat(
+      const img =
+        new Image();
 
-      "pt-PT",
 
-      {
+      img.onload =
+        function() {
 
-        timeZone:
-          "Europe/Lisbon",
+          resolve(true);
 
-        day:
-          "2-digit",
+        };
 
-        month:
-          "2-digit",
 
-        hour:
-          "2-digit",
+      img.onerror =
+        function() {
 
-        minute:
-          "2-digit",
+          resolve(false);
 
-        hour12:
-          false
+        };
 
-      }
 
-    )
+      img.src =
+        url;
 
-    .format(date)
-
+    }
   );
-
 }
 
 
-/* ============================================================
-   BUILD FRAME LIST
-   ============================================================ */
+/* ==========================================================
+   FIND LATEST AVAILABLE FRAME
+   ========================================================== */
 
-function buildFrameList() {
+async function findLatestFrame() {
 
-  const newest =
-    floorToTenMinutes(
+  let candidate =
+    floorToFiveMinutes(
       new Date()
     );
 
 
-  radarFrames = [];
+  /*
+   * IPMA radar production can lag the clock.
 
+   * Look backward up to 30 minutes.
+   */
 
   for (
-
-    let i =
-      FRAME_COUNT - 1;
-
-    i >= 0;
-
-    i--
-
+    let i = 0;
+    i <= 6;
+    i++
   ) {
 
-    const date =
+    const url =
+      radarURL(candidate);
+
+
+    if (
+      imageCache.has(url)
+    ) {
+
+      return candidate;
+
+    }
+
+
+    const exists =
+      await testImage(url);
+
+
+    if (exists) {
+
+      return candidate;
+
+    }
+
+
+    candidate =
       new Date(
-
-        newest.getTime()
-
-        -
-
-        i
-
-        *
-
-        FRAME_INTERVAL_MINUTES
-
-        *
-
-        60
-
-        *
-
+        candidate.getTime() -
+        IPMA_FRAME_MINUTES *
+        60 *
         1000
-
       );
+  }
 
 
-    radarFrames.push({
+  return null;
+}
 
-      date: date,
 
-      url:
-        radarURL(date),
+/* ==========================================================
+   BUILD FRAME LIST
+   ========================================================== */
 
-      loaded:
-        false
+async function buildFrameList(
+  historyHours,
+  intervalMinutes,
+  generation
+) {
 
-    });
+  const newest =
+    await findLatestFrame();
+
+
+  if (
+    !newest ||
+    generation !== loadGeneration
+  ) {
+
+    return [];
 
   }
 
 
   /*
-   * Index 0 = oldest
-   *
-   * Index 36 = newest
+   * For example:
+
+   * 3 hours / 5 minutes = 36 intervals
+
+   * Including both endpoints:
+   * 37 images
    */
 
-  currentFrame =
-    radarFrames.length - 1;
+  const frameCount =
+    Math.floor(
+      historyHours *
+      60 /
+      intervalMinutes
+    );
 
+
+  const frames = [];
+
+
+  /*
+   * Oldest -> newest
+   */
+
+  for (
+    let i = frameCount;
+    i >= 0;
+    i--
+  ) {
+
+    if (
+      generation !== loadGeneration
+    ) {
+
+      return [];
+
+    }
+
+
+    const date =
+      new Date(
+        newest.getTime() -
+        i *
+        intervalMinutes *
+        60 *
+        1000
+      );
+
+
+    frames.push({
+      date:date,
+      url:radarURL(date),
+      loaded:false
+    });
+
+  }
+
+
+  return frames;
 }
 
 
-/* ============================================================
-   LOAD AN IMAGE
-   ============================================================ */
+/* ==========================================================
+   PRELOAD / DECODE FRAME
+   ========================================================== */
 
-function loadImage(
-  frame
-) {
+function preloadFrame(frame) {
+
+  /*
+   * If the image is already cached as an HTMLImageElement,
+   * use that exact element.
+   */
+
+  if (
+    imageCache.has(frame.url)
+  ) {
+
+    frame.image =
+      imageCache.get(
+        frame.url
+      );
+
+    frame.loaded = true;
+
+    return Promise.resolve(
+      frame.image
+    );
+  }
+
 
   return new Promise(
-
-    resolve => {
+    function(resolve) {
 
       const img =
         new Image();
 
 
       /*
-       * DO NOT set crossOrigin here.
-       *
-       * IPMA's server does not need to expose the image
-       * to canvas. Leaflet can display it normally.
+       * Prevent the browser from lazily decoding this image.
        */
 
-
       img.decoding =
-        "async";
+        "sync";
 
 
-      img.onload = () => {
+      img.onload =
+        async function() {
 
-        frame.loaded =
-          true;
+          /*
+           * decode() ensures that the bitmap is actually
+           * decoded before we put it into the animation.
+           */
 
-        resolve(
-          true
-        );
+          try {
 
-      };
+            if (img.decode) {
+
+              await img.decode();
+
+            }
+
+          } catch(e) {
+
+            /*
+             * The image is still valid even if decode()
+             * rejects on a particular browser.
+             */
+
+          }
 
 
-      img.onerror = () => {
+          imageCache.set(
+            frame.url,
+            img
+          );
 
-        frame.loaded =
-          false;
 
-        resolve(
-          false
-        );
+          frame.image =
+            img;
 
-      };
+          frame.loaded =
+            true;
+
+
+          resolve(img);
+
+        };
+
+
+      img.onerror =
+        function() {
+
+          frame.loaded =
+            false;
+
+          resolve(null);
+
+        };
 
 
       img.src =
         frame.url;
 
     }
-
   );
-
 }
 
 
-/* ============================================================
-   DISPLAY RADAR FRAME
-   ============================================================ */
+/* ==========================================================
+   PRELOAD ALL FRAMES
+   ========================================================== */
 
-function displayRadarFrame(
-  index
+async function preloadFrames(
+  frames,
+  generation
 ) {
 
-  if (
-
-    index < 0
-
-    ||
-
-    index >=
-      radarFrames.length
-
-  ) {
-
-    return;
-
-  }
-
-
-  const frame =
-    radarFrames[index];
-
-
-  if (!frame.loaded) {
-
-    document
-
-      .getElementById("status")
-
-      .textContent =
-
-      "Loading frame "
-
-      +
-
-      (index + 1)
-
-      +
-
-      " of "
-
-      +
-
-      FRAME_COUNT;
-
-    return;
-
-  }
-
-
-  currentFrame =
-    index;
-
-
   /*
-   * IMPORTANT:
-   *
-   * We use ONE Leaflet ImageOverlay.
-   *
-   * We do not create a new overlay for every frame.
+   * Four simultaneous requests avoids hammering IPMA while
+   * still filling the browser cache quickly.
    */
 
-  if (!radarLayer) {
+  const batchSize = 4;
 
-    radarLayer =
 
-      L.imageOverlay(
+  for (
+    let i = 0;
+    i < frames.length;
+    i += batchSize
+  ) {
 
-        frame.url,
+    if (
+      generation !== loadGeneration
+    ) {
 
-        RADAR_BOUNDS,
+      return;
 
-        {
+    }
 
-          opacity:
-            0.70,
 
-          interactive:
-            false,
+    const batch =
+      frames.slice(
+        i,
+        i + batchSize
+      );
 
-          zIndex:
-            100
 
-        }
-
+    await Promise.all(
+      batch.map(
+        preloadFrame
       )
-
-      .addTo(map);
-
-  }
-
-  else {
-
-    radarLayer.setUrl(
-      frame.url
-    );
-
-  }
-
-
-  radarLayer.bringToFront();
-
-
-  document
-
-    .getElementById("time")
-
-    .textContent =
-
-    formatPortugalTime(
-      frame.date
     );
 
 
-  document
+    /*
+     * Show useful progress during initial loading.
+     */
 
-    .getElementById("status")
+    const loaded =
+      frames.filter(
+        frame => frame.loaded
+      ).length;
 
-    .textContent =
 
-    "Frame "
+    showStatus(
+      "Loading radar " +
+      loaded +
+      " of " +
+      frames.length +
+      "…"
+    );
 
-    +
-
-    (index + 1)
-
-    +
-
-    " of "
-
-    +
-
-    FRAME_COUNT;
-
+  }
 }
 
 
-/* ============================================================
-   INITIAL LOAD
-   ============================================================ */
+/* ==========================================================
+   REMOVE OLD RADAR OVERLAYS
+   ========================================================== */
 
-async function initializeRadar() {
+function removeRadarOverlays() {
 
-  buildFrameList();
-
-
-  /*
-   * FIRST:
-   *
-   * Load only the newest frame.
-   *
-   * This should make the radar appear quickly.
-   */
-
-  document
-
-    .getElementById("status")
-
-    .textContent =
-
-      "Loading latest radar…";
-
-
-  await loadImage(
-
-    radarFrames[
-
-      FRAME_COUNT - 1
-
-    ]
-
-  );
-
-
-  if (
-
-    radarFrames[
-
-      FRAME_COUNT - 1
-
-    ].loaded
-
+  for (
+    const overlay of radarOverlays
   ) {
 
-    displayRadarFrame(
+    if (
+      map.hasLayer(overlay)
+    ) {
 
-      FRAME_COUNT - 1
+      map.removeLayer(
+        overlay
+      );
 
-    );
-
-  }
-
-  else {
-
-    document
-
-      .getElementById("status")
-
-      .textContent =
-
-        "Latest radar frame unavailable.";
-
-    return;
+    }
 
   }
 
 
-  /*
-   * NOW:
-   *
-   * Load the remaining 36 frames in the background.
-   *
-   * We do not block display of the current frame.
-   */
-
-  loadHistory();
-
+  radarOverlays = [];
 }
 
 
-/* ============================================================
-   LOAD HISTORY
-   ============================================================ */
+/* ==========================================================
+   CREATE RADAR OVERLAYS
+   ========================================================== */
 
-async function loadHistory() {
+function createRadarOverlays() {
 
-  let loaded =
-    1;
+  removeRadarOverlays();
 
 
   /*
-   * Load from newest backwards.
-   *
-   * Only four requests at a time.
-   *
-   * This avoids hammering IPMA and avoids creating a huge
-   * simultaneous memory/network load on an iPhone.
+   * Create ONE Leaflet ImageOverlay per frame.
+
+   * Every image is therefore already loaded, decoded, and
+   * positioned by Leaflet before playback begins.
+
+   * During playback we merely change opacity.
    */
 
   for (
-
-    let start =
-      FRAME_COUNT - 2;
-
-    start >= 0;
-
-    start -= 4
-
+    let i = 0;
+    i < radarFrames.length;
+    i++
   ) {
 
-    const batch = [];
+    const frame =
+      radarFrames[i];
 
 
-    for (
+    const overlay =
+      L.imageOverlay(
+        frame.url,
+        RADAR_BOUNDS,
+        {
+          opacity:0,
+          interactive:false,
+          zIndex:100
+        }
+      );
 
-      let i = start;
 
-      i > start - 4 && i >= 0;
+    overlay.addTo(map);
 
-      i--
 
+    radarOverlays.push(
+      overlay
+    );
+
+  }
+
+
+  /*
+   * Make only the current frame visible.
+   */
+
+  setVisibleFrame(
+    currentFrameIndex
+  );
+}
+
+
+/* ==========================================================
+   SHOW ONE FRAME
+   ========================================================== */
+
+function setVisibleFrame(index) {
+
+  if (
+    index < 0 ||
+    index >= radarOverlays.length
+  ) {
+
+    return;
+
+  }
+
+
+  /*
+   * Only change opacity.
+
+   * No new network request.
+   * No new image decode.
+   * No new overlay creation.
+   * No map movement.
+   */
+
+  for (
+    let i = 0;
+    i < radarOverlays.length;
+    i++
+  ) {
+
+    radarOverlays[i].setOpacity(
+      i === index
+        ? .80
+        : 0
+    );
+
+  }
+
+
+  currentFrameIndex =
+    index;
+
+
+  updateFrameCounter();
+}
+
+
+/* ==========================================================
+   REBUILD RADAR
+   ========================================================== */
+
+async function rebuildRadar() {
+
+  stopPlayback(false);
+
+
+  const generation =
+    ++loadGeneration;
+
+
+  showStatus(
+    "Loading radar…"
+  );
+
+
+  try {
+
+    const historyHours =
+      Number(
+        historySelect.value
+      );
+
+
+    const intervalMinutes =
+      Number(
+        intervalSelect.value
+      );
+
+
+    let frames =
+      await buildFrameList(
+        historyHours,
+        intervalMinutes,
+        generation
+      );
+
+
+    if (
+      generation !== loadGeneration
     ) {
 
-      batch.push(
-        i
+      return;
+
+    }
+
+
+    if (!frames.length) {
+
+      throw new Error(
+        "No current IPMA radar frame is available."
       );
 
     }
 
 
-    await Promise.all(
+    /*
+     * Load and decode every frame before constructing the
+     * animation.
+     */
 
-      batch.map(
-
-        async index => {
-
-          const ok =
-            await loadImage(
-              radarFrames[index]
-            );
-
-
-          if (ok) {
-
-            loaded++;
-
-          }
-
-        }
-
-      )
-
+    await preloadFrames(
+      frames,
+      generation
     );
 
 
-    document
+    if (
+      generation !== loadGeneration
+    ) {
 
-      .getElementById("status")
+      return;
 
-      .textContent =
-
-      "Radar history "
-
-      +
-
-      loaded
-
-      +
-
-      "/"
-
-      +
-
-      FRAME_COUNT;
+    }
 
 
     /*
-     * Give Safari/iPhone a little breathing room.
+     * Remove frames which IPMA did not actually supply.
      */
 
-    await new Promise(
+    frames =
+      frames.filter(
+        frame => frame.loaded
+      );
 
-      resolve =>
 
-        setTimeout(
+    if (!frames.length) {
 
-          resolve,
+      throw new Error(
+        "No radar images could be loaded."
+      );
 
-          100
+    }
 
-        )
 
+    radarFrames =
+      frames;
+
+
+    /*
+     * Start on newest frame.
+     */
+
+    currentFrameIndex =
+      radarFrames.length - 1;
+
+
+    /*
+     * Create the complete set of Leaflet overlays.
+     */
+
+    createRadarOverlays();
+
+
+    updateFrameCounter();
+
+
+    hideStatus();
+
+  } catch(error) {
+
+    console.error(
+      "Radar error:",
+      error
     );
 
+
+    if (
+      generation === loadGeneration
+    ) {
+
+      showStatus(
+        "Unable to load radar."
+      );
+
+
+      setTimeout(
+        hideStatus,
+        3000
+      );
+
+    }
+
   }
-
-
-  document
-
-    .getElementById("status")
-
-    .textContent =
-
-      "Radar history ready";
-
 }
 
 
-/* ============================================================
-   PLAYBACK
-   ============================================================ */
+/* ==========================================================
+   PLAY / PAUSE UI
+   ========================================================== */
 
-function stopPlayback() {
+function setPlayingUI(value) {
 
   playing =
-    false;
+    value;
 
 
-  if (playTimer) {
+  playIcon.style.display =
+    value
+      ? "none"
+      : "block";
+
+
+  pauseIcon.style.display =
+    value
+      ? "block"
+      : "none";
+
+
+  playButton.title =
+    value
+      ? "Pause"
+      : "Play";
+
+
+  playButton.setAttribute(
+    "aria-label",
+    value
+      ? "Pause radar animation"
+      : "Play radar animation"
+  );
+}
+
+
+/* ==========================================================
+   STOP PLAYBACK
+   ========================================================== */
+
+function stopPlayback(
+  restoreView = true
+) {
+
+  if (
+    playbackTimer !== null
+  ) {
 
     clearTimeout(
-      playTimer
+      playbackTimer
     );
 
-    playTimer =
+    playbackTimer =
       null;
+  }
+
+
+  if (playing) {
+
+    setPlayingUI(false);
 
   }
 
 
-  document
+  if (
+    restoreView &&
+    playbackView
+  ) {
 
-    .getElementById("play")
+    map.setView(
+      playbackView.center,
+      playbackView.zoom,
+      {
+        animate:false
+      }
+    );
 
-    .textContent =
+  }
 
-      "▶ Play";
 
+  playbackView =
+    null;
 }
 
 
-/* ============================================================
-   ADVANCE PLAYBACK
-   ============================================================ */
+/* ==========================================================
+   START PLAYBACK
+   ========================================================== */
 
-function advancePlayback() {
+function startPlayback() {
+
+  if (
+    radarFrames.length < 2
+  ) {
+
+    return;
+
+  }
+
+
+  if (playing) {
+
+    return;
+
+  }
+
+
+  /*
+   * Remember the exact map position.
+   */
+
+  playbackView = {
+    center:map.getCenter(),
+    zoom:map.getZoom()
+  };
+
+
+  /*
+   * Start with the oldest frame.
+   */
+
+  currentFrameIndex =
+    0;
+
+
+  setVisibleFrame(
+    currentFrameIndex
+  );
+
+
+  setPlayingUI(true);
+
+
+  scheduleNextFrame();
+}
+
+
+/* ==========================================================
+   PLAYBACK LOOP
+   ========================================================== */
+
+function scheduleNextFrame() {
 
   if (!playing) {
 
@@ -1805,235 +1724,254 @@ function advancePlayback() {
   }
 
 
-  if (
-
-    currentFrame
-    >=
-    FRAME_COUNT - 1
-
-  ) {
-
-    stopPlayback();
-
-    return;
-
-  }
-
-
-  const next =
-    currentFrame + 1;
-
-
-  /*
-   * Do not request another network image here.
-   *
-   * The history loader is responsible for filling the cache.
-   */
-
-  if (
-
-    !radarFrames[next].loaded
-
-  ) {
-
-    document
-
-      .getElementById("status")
-
-      .textContent =
-
-      "Waiting for radar history…";
-
-
-    playTimer =
-
-      setTimeout(
-
-        advancePlayback,
-
-        250
-
-      );
-
-    return;
-
-  }
-
-
-  displayRadarFrame(
-    next
-  );
-
-
-  playTimer =
-
+  playbackTimer =
     setTimeout(
+      function() {
 
-      advancePlayback,
+        if (!playing) {
 
+          return;
+
+        }
+
+
+        const nextIndex =
+          currentFrameIndex + 1;
+
+
+        /*
+         * Finished the animation.
+         */
+
+        if (
+          nextIndex >=
+          radarFrames.length
+        ) {
+
+          currentFrameIndex =
+            radarFrames.length - 1;
+
+
+          setVisibleFrame(
+            currentFrameIndex
+          );
+
+
+          stopPlayback(true);
+
+
+          return;
+
+        }
+
+
+        /*
+         * THIS IS NOW AN EXTREMELY CHEAP OPERATION.
+
+         * The next image is already decoded and already
+         * sitting in a Leaflet overlay.
+
+         * We are simply switching opacity.
+         */
+
+        setVisibleFrame(
+          nextIndex
+        );
+
+
+        scheduleNextFrame();
+
+      },
       PLAYBACK_DELAY
-
     );
-
 }
 
 
-/* ============================================================
-   PLAY BUTTON
-   ============================================================ */
+/* ==========================================================
+   PREVIOUS FRAME
+   ========================================================== */
 
-document
+function showPreviousFrame() {
 
-  .getElementById("play")
-
-  .addEventListener(
-
-    "click",
-
-    () => {
-
-      if (playing) {
-
-        stopPlayback();
-
-        return;
-
-      }
+  stopPlayback(false);
 
 
-      /*
-       * Start at oldest frame.
-       */
+  if (
+    !radarFrames.length
+  ) {
 
-      if (
+    return;
 
-        !radarFrames[0].loaded
-
-      ) {
-
-        document
-
-          .getElementById("status")
-
-          .textContent =
-
-          "History is still loading…";
-
-        return;
-
-      }
+  }
 
 
-      currentFrame =
-        0;
+  let index =
+    currentFrameIndex - 1;
 
 
-      displayRadarFrame(
-        0
-      );
+  if (index < 0) {
+
+    index =
+      radarFrames.length - 1;
+
+  }
 
 
-      playing =
-        true;
+  setVisibleFrame(
+    index
+  );
+}
 
 
-      document
+/* ==========================================================
+   NEXT FRAME
+   ========================================================== */
 
-        .getElementById("play")
+function showNextFrame() {
 
-        .textContent =
-
-        "⏸ Pause";
+  stopPlayback(false);
 
 
-      playTimer =
+  if (
+    !radarFrames.length
+  ) {
 
-        setTimeout(
+    return;
 
-          advancePlayback,
+  }
 
-          PLAYBACK_DELAY
 
-        );
+  let index =
+    currentFrameIndex + 1;
+
+
+  if (
+    index >= radarFrames.length
+  ) {
+
+    index = 0;
+
+  }
+
+
+  setVisibleFrame(
+    index
+  );
+}
+
+
+/* ==========================================================
+   EVENTS
+   ========================================================== */
+
+historySelect.addEventListener(
+  "change",
+  function() {
+
+    rebuildRadar();
+
+  }
+);
+
+
+intervalSelect.addEventListener(
+  "change",
+  function() {
+
+    rebuildRadar();
+
+  }
+);
+
+
+previousButton.addEventListener(
+  "click",
+  function() {
+
+    showPreviousFrame();
+
+  }
+);
+
+
+nextButton.addEventListener(
+  "click",
+  function() {
+
+    showNextFrame();
+
+  }
+);
+
+
+playButton.addEventListener(
+  "click",
+  function() {
+
+    if (playing) {
+
+      stopPlayback(true);
+
+    } else {
+
+      startPlayback();
 
     }
 
-  );
+  }
+);
 
 
-/* ============================================================
-   PREVIOUS
-   ============================================================ */
+/* ==========================================================
+   INITIALIZATION
+   ========================================================== */
 
-document
+async function initialize() {
 
-  .getElementById("previous")
-
-  .addEventListener(
-
-    "click",
-
-    () => {
-
-      stopPlayback();
+  initializeMap();
 
 
-      displayRadarFrame(
+  /*
+   * Santa Rita is the immediate fallback.
+   */
 
-        Math.max(
-
-          0,
-
-          currentFrame - 1
-
-        )
-
-      );
-
+  map.setView(
+    [
+      DEFAULT_LOCATION.lat,
+      DEFAULT_LOCATION.lon
+    ],
+    DEFAULT_LOCATION.zoom,
+    {
+      animate:false
     }
-
   );
 
 
-/* ============================================================
-   NEXT
-   ============================================================ */
+  /*
+   * Try the user's actual location.
 
-document
+   * If permission is denied or unavailable, Santa Rita
+   * remains the fallback.
+   */
 
-  .getElementById("next")
-
-  .addEventListener(
-
-    "click",
-
-    () => {
-
-      stopPlayback();
+  useCurrentLocation({
+    silent:true
+  });
 
 
-      displayRadarFrame(
+  /*
+   * Load the radar.
+   */
 
-        Math.min(
-
-          FRAME_COUNT - 1,
-
-          currentFrame + 1
-
-        )
-
-      );
-
-    }
-
-  );
+  await rebuildRadar();
+}
 
 
-/* ============================================================
+/* ==========================================================
    START
-   ============================================================ */
+   ========================================================== */
 
-initializeRadar();
+initialize();
 
 </script>
 
