@@ -569,11 +569,35 @@ function updateFrameCounter() {
     return;
   }
 
+  const frame =
+    radarFrames[currentFrameIndex];
+
+  /*
+   * Convert the IPMA UTC timestamp to Lisbon local time.
+   *
+   * Europe/Lisbon automatically handles daylight saving:
+   *   winter = UTC
+   *   summer = UTC+1
+   */
+
+  const localTime =
+    new Intl.DateTimeFormat(
+      "en-GB",
+      {
+        timeZone: "Europe/Lisbon",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }
+    ).format(frame.date);
+
   frameCounter.textContent =
     "Image " +
     (currentFrameIndex + 1) +
     " of " +
-    radarFrames.length;
+    radarFrames.length +
+    " · " +
+    localTime;
 
   frameCounter.style.display =
     "block";
