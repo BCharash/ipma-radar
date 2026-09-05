@@ -1499,6 +1499,11 @@ async function rebuildRadar() {
 
   stopPlayback(false);
 
+  const previousNewestTime =
+  radarFrames.length
+    ? radarFrames[radarFrames.length - 1].date.getTime()
+    : null;
+
 
   const generation =
     ++loadGeneration;
@@ -1609,8 +1614,24 @@ async function rebuildRadar() {
 
     updateFrameCounter();
 
+    const newNewestTime =
+      radarFrames[radarFrames.length - 1].date.getTime();
 
-    hideStatus();
+    if (
+      previousNewestTime !== null &&
+      newNewestTime === previousNewestTime
+    ) {
+      showStatus(
+        "Radar is current"
+      );
+
+      setTimeout(
+        hideStatus,
+        2500
+      );
+    } else {
+      hideStatus();
+    }
 
   } catch(error) {
 
