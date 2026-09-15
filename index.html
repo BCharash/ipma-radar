@@ -150,6 +150,30 @@ select{
   height:19px
 }
 
+.radar-range-control{
+  width:34px;
+  height:34px;
+  background:#fff;
+  border:2px solid rgba(0,0,0,.2);
+  border-radius:4px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  -webkit-tap-highlight-color:transparent
+}
+
+.radar-range-control svg{
+  width:19px;
+  height:19px
+}
+
+.radar-range-control.range-active{
+  background:#e8e8e8;
+  border-color:#888
+}
+
 #radarLegend{
   position:absolute;
   left:10px;
@@ -454,8 +478,6 @@ select{
     >
       <option value="0.1">0.1 mm/h</option>
       <option value="0.5">0.5 mm/h</option>
-      <option value="1">1 mm/h</option>
-      <option value="2">2 mm/h</option>
     </select>
   </div>
 
@@ -508,6 +530,14 @@ const RADAR_BOUNDS = [
   [43.792862,-4.345465]
 ];
 
+const RADAR_SITES = [
+  {name:"Arouca",lat:40.84502,lon:-8.27972},
+  {name:"Coruche",lat:39.07137,lon:-8.40011},
+  {name:"Loulé",lat:37.30408,lon:-7.95308}
+];
+
+const RADAR_RANGE_KM = 120;
+
 const IPMA_FRAME_MINUTES = 5;
 const PLAYBACK_DELAY = 180;
 
@@ -531,6 +561,9 @@ let loadGeneration = 0;
 
 let locationMarker = null;
 let locationAccuracy = null;
+
+let radarRangeLayer = null;
+let radarRangeVisible = false;
 
 let minimumRainThreshold =
   Number(
@@ -654,14 +687,6 @@ function applyRadarThreshold(){
     filter =
       "url(#radar-threshold-05)";
   }
-  else if(minimumRainThreshold === 1){
-    filter =
-      "url(#radar-threshold-1)";
-  }
-  else if(minimumRainThreshold >= 2){
-    filter =
-      "url(#radar-threshold-2)";
-  }
 
   for(const overlay of radarOverlays){
 
@@ -678,7 +703,7 @@ function applyRadarThreshold(){
 function initializeMinimumRainThreshold(){
 
   const allowed =
-    [0.1,0.5,1,2];
+    [0.1,0.5];
 
   if(!allowed.includes(
     minimumRainThreshold
@@ -810,8 +835,102 @@ function addLocationControl(){
   map.addControl(
     new LocationControl()
   );
+
+  addRadarRangeControl();
 }
 
+
+function createRadarRangeLayer(){
+
+  map.createPane("radarRangePane");
+  map.getPane("radarRangePane").style.zIndex = 450;
+  map.getPane("radarRangePane").style.pointerEvents = "none";
+
+  radarRangeLayer = L.layerGroup();
+
+  for(const site of RADAR_SITES){
+
+    L.circle([site.lat,site.lon],{
+      radius:RADAR_RANGE_KM * 1000,
+      pane:"radarRangePane",
+      color:"#555",
+      weight:1.5,
+      opacity:.62,
+      fill:false,
+      interactive:false
+    }).addTo(radarRangeLayer);
+
+    L.circleMarker([site.lat,site.lon],{
+      pane:"radarRangePane",
+      radius:4,
+      color:"#555",
+      weight:1.5,
+      opacity:.85,
+      fillOpacity:.85,
+      interactive:false
+    }).addTo(radarRangeLayer);
+  }
+}
+
+function setRadarRangeVisible(value){
+
+  radarRangeVisible = value;
+
+  if(!radarRangeLayer){
+    createRadarRangeLayer();
+  }
+
+  if(value){
+    radarRangeLayer.addTo(map);
+  }
+  else if(map.hasLayer(radarRangeLayer)){
+    map.removeLayer(radarRangeLayer);
+  }
+
+  const button = document.querySelector(".radar-range-control");
+
+  if(button){
+    button.classList.toggle("range-active",value);
+    button.title = value ? "Radar range on" : "Radar range off";
+    button.setAttribute("aria-label",value ? "Radar range on" : "Radar range off");
+  }
+}
+
+function addRadarRangeControl(){
+
+  const RadarRangeControl =
+    L.Control.extend({
+
+      options:{position:"topright"},
+
+      onAdd:function(){
+
+        const button =
+          L.DomUtil.create("button","radar-range-control");
+
+        button.type = "button";
+        button.title = "Radar range off";
+        button.setAttribute("aria-label","Radar range off");
+
+        button.innerHTML =
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+          '<circle cx="12" cy="12" r="3"></circle>' +
+          '<circle cx="12" cy="12" r="7"></circle>' +
+          '<circle cx="12" cy="12" r="10"></circle>' +
+          '</svg>';
+
+        L.DomEvent.disableClickPropagation(button);
+
+        L.DomEvent.on(button,"click",() => {
+          setRadarRangeVisible(!radarRangeVisible);
+        });
+
+        return button;
+      }
+    });
+
+  map.addControl(new RadarRangeControl());
+}
 
 function useCurrentLocation(
   options={}
@@ -1366,6 +1485,10 @@ async function rebuildRadar(){
 
     createRadarOverlays();
 
+    if(radarRangeVisible && radarRangeLayer && !map.hasLayer(radarRangeLayer)){
+      radarRangeLayer.addTo(map);
+    }
+
     updateFrameCounter();
 
     const newNewestTime =
@@ -1745,41 +1868,9 @@ initialize();
   </feComponentTransfer>
 </filter>
 
-<filter
-  id="radar-threshold-1"
-  color-interpolation-filters="sRGB"
->
-  <feColorMatrix
-    type="matrix"
-    values="
-      1 0 0 0 0
-      0 1 0 0 0
-      0 0 1 0 0
-      1 0 0 0 0
-    "
-  />
-</filter>
 
-<filter
-  id="radar-threshold-2"
-  color-interpolation-filters="sRGB"
->
-  <feColorMatrix
-    type="matrix"
-    values="
-      1 0 0 0 0
-      0 1 0 0 0
-      0 0 1 0 0
-      1 -1 0 0 0
-    "
-  />
-  <feComponentTransfer>
-    <feFuncA
-      type="table"
-      tableValues="0 0 1 1"
-    />
-  </feComponentTransfer>
-</filter>
+
+
 
 </defs>
 </svg>
