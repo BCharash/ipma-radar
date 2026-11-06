@@ -161,3 +161,15 @@ satellite-only/combined animation, timestamp ordering and lag labels,
 newest-first loading, full High batch switching, automatic coverage, cache reuse, registration after pan/zoom, and failure recovery. It requires network access
 and can take several minutes. It saves a mobile screenshot in the system
 temporary directory. Real iPhone/Safari testing remains separate.
+
+
+## SkyFlow cloud lab
+
+A separate still-image comparison is available at
+[`labs/clouds/index.html`](labs/clouds/index.html). Open it with Live Server to
+compare GeoColour against photographic imagery clipped by a cloud mask, with
+linked maps, matching UTC slots, Low/High resolution, optional IPMA radar,
+and place names/major roads/borders drawn above fully opaque GeoColour,
+cache/timing measurements, and a downloadable comparison record. The Meteomatics
+slot remains inactive pending access. See [lab instructions and findings](docs/cloud-lab.md).
+The production app's name, sources and cache are unchanged by this lab.

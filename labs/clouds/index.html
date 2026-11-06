@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SkyFlow · Cloud comparison lab</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<link rel="stylesheet" href="cloud-lab.css">
+</head>
+<body>
+<header>
+  <a href="../../index.html">← Radar app</a>
+  <h1>SkyFlow <span>Cloud comparison lab</span></h1>
+  <p>Compare photographic cloud texture and clear-area transparency. Still images over Portugal; experimental, separate from the main app.</p>
+</header>
+<main>
+<form id="controls">
+  <label>Observation (UTC) <input id="observation" type="datetime-local" step="60" required></label>
+  <button id="latest" type="button">Latest common time</button>
+  <label>Resolution <select id="resolution"><option value="256">Low · 256 px</option><option value="768">High · 768 px</option></select></label>
+  <label>Image opacity <input id="opacity" type="range" min="0" max="100" value="100"><output id="opacityValue">100%</output></label>
+  <label>Load mode <select id="cacheMode"><option value="cached">Reuse lab cache</option><option value="network">Bypass lab cache</option></select></label>
+  <button type="submit">Load comparison</button>
+  <button id="home" type="button">Portugal view</button>
+  <label><input id="radar" type="checkbox"> IPMA radar</label>
+</form>
+<fieldset id="featureControls">
+  <legend>Map features above imagery</legend>
+  <label><input id="featurePlaces" type="checkbox" checked> Place names</label>
+  <label><input id="featureRoads" type="checkbox" checked> Major roads</label>
+  <label><input id="featureOutlines" type="checkbox" checked> Coastlines &amp; borders</label>
+  <label>Strength <input id="featureStrength" type="range" min="0" max="100" value="85"><output id="featureStrengthValue">85%</output></label>
+  <p id="featureStatus" class="hint" role="status">Loading local map features…</p>
+</fieldset>
+<p id="overall" role="status" aria-live="polite">Reading satellite availability…</p>
+<p class="hint">Maps move together. Expanded views load after you finish moving. Old imagery remains labelled until its replacement is ready. All times below are UTC.</p>
+<section class="comparisons" aria-label="Linked cloud maps">
+  <article>
+    <h2>1 · GeoColour + map features</h2>
+    <p class="description">Unmodified MTG GeoColour, with place names, major roads and boundaries above it.</p>
+    <div id="baselineMap" class="map" aria-label="GeoColour reference map"></div>
+    <p id="baselineStatus" class="result" role="status">Waiting for availability.</p>
+  </article>
+  <article>
+    <h2>2 · Photographic clouds + mask</h2>
+    <p class="description">MSG Natural Colour texture, clipped by the same-time MSG Cloud Mask.</p>
+    <div id="maskedMap" class="map" aria-label="Photographic masked cloud map"></div>
+    <p id="maskedStatus" class="result" role="status">Waiting for availability.</p>
+    <label>Inspect <select id="maskedView"><option value="clouds">Cloud-only photograph</option><option value="texture">Original photograph</option><option value="mask">Classification mask</option></select></label>
+    <label>Mask edges <select id="maskEdges"><option value="exact">Exact classes only</option><option value="blended">Reconstruct palette blends</option></select></label>
+    <button id="saveClouds" type="button" disabled>Save cloud PNG</button>
+  </article>
+  <article>
+    <h2>3 · Meteomatics</h2>
+    <p class="description">Provider photographic overlay comparison, pending suitable access.</p>
+    <div id="providerMap" class="map" aria-label="Reserved provider comparison map"></div>
+    <p class="result">Inactive · no provider image loaded. Credentials and distribution terms have not been confirmed.</p>
+    <a href="https://www.meteomatics.com/en/api/available-parameters/satellite/" target="_blank" rel="noopener noreferrer">About sat_cloud_layer</a>
+  </article>
+</section>
+<details open>
+  <summary>Comparison record</summary>
+  <p>Times are requested catalogue slots, not independently verified acquisition timestamps. A time difference is shown when products cannot use the same slot.</p>
+  <pre id="metrics">No comparison loaded.</pre>
+  <label for="notes">Visual observations</label>
+  <textarea id="notes" rows="3" placeholder="Cloud texture, thin clouds, clear areas, edge quality, coastline alignment, day/night appearance…"></textarea>
+  <button id="export" type="button">Download comparison record</button>
+</details>
+<details>
+  <summary>How to judge the result</summary>
+  <p>Keep GeoColour at 100% opacity and use the map-feature switches to compare geographic context without fading the clouds. In the masked comparison, clear land and water should expose the street map while clouds retain their photographic shading. Look for missing thin clouds, hard mask edges and coastlines that move when you fade the imagery. Compare Low and High at the same UTC time.</p>
+  <p>Natural Colour depends on sunlight. Test daylight, sunset and night separately; a dark nighttime result is not a successful photographic nighttime layer. A categorical mask cannot reproduce physical partial cloud transparency. Exact mode omits mixed palette pixels. Palette-blend mode reconstructs their cloud contribution from the documented class colours, preserving resampled edges; it does not estimate cloud optical thickness.</p>
+  <p>Load once with “Bypass lab cache”, then with “Reuse lab cache”. Bypass affects this lab’s image requests only; upstream servers, network intermediaries, map tiles and catalogue caches may still be warm. It does not erase the app’s cache.</p>
+  <p>Optional IPMA radar uses its original bounds and the latest available five-minute slot at or before the selected time (up to 30 minutes back). An unavailable radar image is reported independently.</p>
+  <p>Sources: <a href="https://view.eumetsat.int/">EUMETSAT EUMETView</a>, <a href="https://user.eumetsat.int/catalogue/EO:EUM:DAT:MSG:CLM">MSG Cloud Mask</a>. Masked imagery is an experimental derived rendering. Product-specific redistribution terms remain to be confirmed before distribution of derived imagery. This lab does not change the app’s production sources.</p>
+</details>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script type="module" src="cloud-lab.js"></script>
+</body>
+</html>

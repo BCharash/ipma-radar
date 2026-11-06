@@ -1189,6 +1189,54 @@ outlines, update-failure retention, and stale-request cancellation are also
 checked. Desktop Chrome uses a simulated mobile viewport; real iPhone/Safari
 acceptance remains outstanding. Timings are service samples, not guarantees.
 
+## 6 November 2026 — SkyFlow photographic-cloud still-image lab
+
+The user chose the future name SkyFlow and wants worldwide coverage while
+retaining IPMA radar in its valid Portuguese coverage. They explicitly approved
+a separate comparison lab after reviewing its plan. Production renaming and
+worldwide source selection are not part of this lab implementation.
+
+The isolated page is [labs/clouds/index.html](../labs/clouds/index.html), with its
+own styles, ES modules, bounded raw-image cache and comparison record. It loads
+no production controller scripts. Linked maps compare the existing MTG GeoColour
+reference against same-time MSG Natural Colour imagery clipped by MSG Cloud
+Mask. A third map is explicitly inactive for Meteomatics until access and
+redistribution terms are confirmed. No credentials or external-provider data are
+used. This is stage one: still images over Portugal and nearby Atlantic/Europe,
+with UTC selection, Low/High requests, opacity, automatic viewport reloads,
+optional original-bounds IPMA radar and exportable measurements/visual notes.
+
+Live masks contained mixed palette colours even with nearest-neighbour requested.
+Strict decoding deliberately omits and reports those pixels. A separate
+experimental palette-reconstruction option solves the four provider class-colour
+contributions to restore resampled edges, preserving the original satellite RGB.
+It does not guess cloud colour from the photograph or claim physical cloud
+transparency. Inspect controls expose the original photograph and raw mask with
+no extra source request. The default remains strict classification for comparison.
+
+Implementation details, access limitations, reproducible checks and initial
+measurements are in [cloud-lab.md](cloud-lab.md). Live comparisons and controlled
+fixtures check texture preservation, transparency, UTC slots, shared geometry,
+caching, stale loads, retained-image recovery and linked coverage. Original
+production radar bounds and all production scripts remain unchanged.
+
+## 6 November 2026 — Preserve GeoColour and draw map context above it
+
+After inspecting the lab, the user preferred MTG GeoColour's photographic
+appearance to the pixelated masked MSG experiment. They approved updating the
+lab with geographic features above GeoColour. The lab now offers independently
+switchable place names, major roads, and coastlines/borders, with a shared
+strength slider. These vectors sit above satellite and optional radar at full
+image opacity. Satellite pixels, requested time and source remain unchanged.
+
+Local public-domain Natural Earth extracts supply 479 regional cities/towns and
+1,992 major/secondary road features. The lab loads them once, filters by zoom,
+and suppresses overlapping place labels. The original outlines remain in use.
+No external label service or API key was added. This is regional weather-map
+context, not a complete street map. Data provenance and a reproducible extraction
+script are recorded in [data/README.md](../data/README.md). Feature settings are
+included in comparison downloads. Production scripts are unchanged.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite
