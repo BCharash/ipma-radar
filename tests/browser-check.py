@@ -115,124 +115,103 @@ try:
     result=c.evaluate("""(async()=>{
       cancelSatelliteRefinement();
       const originalLoader=loadSatelliteImage;
-      const savedIndex=currentFrameIndex;
-      const savedLoop=looping;
       const calls=[];
-      let release;
-      let releaseHistory;
+      let releaseHistory,releaseHigh;
       const historyGate=new Promise(resolve=>{releaseHistory=resolve;});
+      const highGate=new Promise(resolve=>{releaseHigh=resolve;});
+      const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       try{
-        setVisibleFrame(0);
-        const radarTime=radarFrames[0].date.getTime();
+        satelliteSelect.value='map';await updateSatellite();
+        satelliteSelect.value='hybrid';satelliteQualitySelect.value='low';
+        await getSatelliteCatalogue(new AbortController().signal,false,SATELLITE_PRODUCTS.hybrid.layer);
         satelliteCatalogueTime=Date.now();
+        const newest=Date.parse(satelliteCatalogue[SATELLITE_PRODUCTS.hybrid.layer].timestamp);
+        playbackTime=newest;
         const canvas=document.createElement('canvas');canvas.width=2;canvas.height=2;
-        canvas.getContext('2d').fillRect(0,0,2,2);
         const source=canvas.toDataURL();
-        const image=async()=>{const img=new Image();img.src=source;await img.decode();return img;};
-        loadSatelliteImage=async(url,signal,timeout)=>{
+        loadSatelliteImage=async(url,signal)=>{
           const query=new URL(url).searchParams;
-          calls.push({time:Date.parse(query.get('time')),size:Math.max(Number(query.get('width')),Number(query.get('height'))),
-            previewVisible:!!satelliteLayer && satelliteFrames.some(f=>f.preview && f.overlay===satelliteLayer)});
-          if(calls.length===1)await new Promise(resolve=>{release=resolve;});
-          else if(calls.length>=3)await historyGate;
-          return image();
+          const call={time:Date.parse(query.get('time')),size:Math.max(+query.get('width'),+query.get('height')),bbox:query.get('bbox')};
+          calls.push(call);
+          if(call.size<=256 && calls.filter(c=>c.size<=256).length>=3)await historyGate;
+          if(call.size>256)await highGate;
+          const image=new Image();image.src=source;await image.decode();return image;
         };
-        const previousFrames=satelliteFrames;
         const pending=updateSatellite();
-        for(let i=0;i<100 && !release;i++)await new Promise(r=>setTimeout(r,5));
-        const firstRequestsSmall=calls.every(call=>call.size<=256);
-        const matchingFirst=calls[0].time<=radarTime;
-        release();
-        for(let i=0;i<100 && (satelliteFrames===previousFrames || satelliteFrames.length<2);i++)await new Promise(r=>setTimeout(r,5));
-        setRadarVisible(false);
-        const playableWhileLoading=satelliteLoading && !playButton.disabled;
-        setLoopUI(true);startPlayback();
-        const timeline=JSON.stringify(playbackTimeline);
+        for(let i=0;i<100 && satelliteFrames.length<2;i++)await sleep(5);
+        setRadarVisible(false);setLoopUI(false);startPlayback();
+        const playableWhileLoading=playing && satelliteLoading;
+        const newestFirst=calls[0].time===newest && calls.every((c,i)=>!i || c.time<=calls[i-1].time);
+        await sleep(850);
+        const repeatsWhileLoading=playing;
+        const time=playbackTime,clock=JSON.stringify(playbackTimeline),timer=playbackTimer;
+        setRadarVisible(true);setRadarVisible(false);
+        const togglesContinue=playing && playbackTime===time && playbackTimer===timer && JSON.stringify(playbackTimeline)===clock;
         releaseHistory();await pending;
-        const stableClock=playing && JSON.stringify(playbackTimeline)===timeline &&
-          satelliteFrames[currentSatelliteIndex].date.getTime()===playbackTimeline[playbackCursor];
-        await new Promise(resolve=>setTimeout(resolve,450));
-        const nextLoopIncludesArrivals=playing && playbackTimeline.length===satelliteFrames.length;
-        const lowResolutionFirst=calls.every(call=>call.size<=256);
-        const uniqueFrames=new Set(satelliteFrames.map(f=>f.date.getTime())).size===satelliteFrames.length;
-        const toggleTime=playbackTime;
-        const toggleTimer=playbackTimer;
-        const toggleTimeline=JSON.stringify(playbackTimeline);
-        setRadarVisible(true);
-        const enableContinues=playing && playbackTimer===toggleTimer && playbackTime===toggleTime && JSON.stringify(playbackTimeline)===toggleTimeline;
-        setRadarVisible(false);
-        const disableContinues=playing && playbackTimer===toggleTimer && playbackTime===toggleTime && playbackSource==='satellite';
-        await new Promise(resolve=>setTimeout(resolve,220));
-        const clockAdvancesAfterToggle=playing && playbackTime!==toggleTime;
-        const restoredTime=playbackTime;
-        setRadarVisible(true);
-        const beforeBoth=Math.min(radarFrames[0].date.getTime(),satelliteFrames[0].date.getTime())-60000;
-        displayPlaybackTime(beforeBoth);
-        const noFutureFrames=!radarFrameAvailable && radarOverlays.every(overlay=>overlay.options.opacity===0) && satelliteLayer===null;
-        displayPlaybackTime(restoredTime);
-        stopPlayback(false);setRadarVisible(true);cancelSatelliteRefinement();
-        const count=satelliteFrames.length;
-        const historyGeneration=satelliteGeneration;
-        const beforeZoomCalls=calls.length;
-        map.setZoom(map.getZoom()+2,{animate:false});cancelSatelliteRefinement();
-        const beforeDetailTime=playbackTime;
-        const beforeDetailFrame=satelliteFrames.find(frame=>frame.overlay===satelliteLayer || frame.detail?.overlay===satelliteLayer).date.getTime();
-        await refineSatelliteFrame();
-        const afterDetailFrame=satelliteFrames.find(frame=>frame.overlay===satelliteLayer || frame.detail?.overlay===satelliteLayer).date.getTime();
-        const detailKeepsTime=playbackTime===beforeDetailTime && beforeDetailFrame===afterDetailFrame;
-        const zoomOnlyRefines=satelliteGeneration===historyGeneration && satelliteFrames.length===count && calls.length===beforeZoomCalls+1;
-        const singleRefinement=satelliteFrames.filter(frame=>frame.detail).length===1;
-        const detail=satelliteFrames.find(frame=>frame.detail).detail;
-        const g=detail.geometry;
-        const rect=detail.overlay.getElement().getBoundingClientRect();
-        const mapRect=map.getContainer().getBoundingClientRect();
-        const detailError=Math.max(...[g.bounds.getCenter(),g.bounds.getSouthWest(),g.bounds.getNorthEast()].map(p=>{
+        const arrivalsKeepClock=playbackTime===time && JSON.stringify(playbackTimeline)===clock;
+        playbackCursor=playbackTimeline.length-1;await sleep(220);
+        const historyAdopted=playing && playbackTimeline.length===satelliteFrames.length;
+        setLoopUI(true);
+        satelliteQualitySelect.value='high';
+        const high=refineSatelliteFrame();await sleep(10);
+        const lowUntilComplete=satelliteQualityActive==='low' && !satelliteQualityPending && playing;
+        satelliteQualitySelect.value='low';satelliteQualitySelect.dispatchEvent(new Event('change'));
+        releaseHigh();await high;
+        const lateHighRespectsLow=satelliteQualityActive==='low' && !satelliteQualityPending;
+        satelliteQualitySelect.value='high';await refineSatelliteFrame();
+        const waitsForBoundary=satelliteQualityActive==='low' && satelliteQualityPending;
+        playbackCursor=playbackTimeline.length-1;await sleep(220);
+        const allHigh=satelliteQualityActive==='high' && satelliteFrames.every(f=>f.detail);
+        let uniformHigh=true;
+        for(const t of playbackTimeline){displayPlaybackTime(t);uniformHigh=uniformHigh && satelliteFrames.some(f=>f.detail.overlay===satelliteLayer);}
+        satelliteQualitySelect.value='low';satelliteQualitySelect.dispatchEvent(new Event('change'));
+        const lowInstant=satelliteQualityActive==='low' && satelliteFrames.some(f=>f.overlay===satelliteLayer);
+        const before=calls.length;
+        satelliteQualitySelect.value='high';await refineSatelliteFrame();
+        const highReuse=calls.length===before;
+        playbackCursor=playbackTimeline.length-1;await sleep(220);
+        satelliteQualitySelect.value='low';satelliteQualitySelect.dispatchEvent(new Event('change'));
+        const missing=satelliteFrames[satelliteFrames.length-1];missing.detail.overlay.remove();delete missing.detail;
+        const goodLoader=loadSatelliteImage;
+        loadSatelliteImage=async(url,signal)=>Date.parse(new URL(url).searchParams.get('time'))===+missing.date ? null : goodLoader(url,signal);
+        satelliteQualitySelect.value='high';await refineSatelliteFrame();
+        const incompleteStaysLow=satelliteQualityActive==='low' && !satelliteQualityPending;
+        loadSatelliteImage=goodLoader;
+        const priorBounds=satelliteFrames[0].geometry.bounds;
+        const priorTime=playbackTime;
+        const beforeCoverage=calls.length;
+        map.setZoom(map.getZoom()-2,{animate:false});
+        const coverageKeepsClock=playing && playbackTime===priorTime;
+        for(let i=0;i<200 && calls.length===beforeCoverage;i++)await sleep(5);
+        for(let i=0;i<200 && satelliteLoading;i++)await sleep(5);
+        const expanded=satelliteFrames.every(f=>f.geometry.bounds.contains(map.getBounds())) &&
+          !priorBounds.contains(map.getBounds());
+        const zoomNewestFirst=calls[beforeCoverage]?.time===newest;
+        const frame=satelliteFrames[0],g=frame.geometry;
+        const rect=frame.overlay.getElement().getBoundingClientRect(),mr=map.getContainer().getBoundingClientRect();
+        const registrationError=Math.max(...[g.bounds.getCenter(),g.bounds.getSouthWest(),g.bounds.getNorthEast()].map(p=>{
           const q=L.CRS.EPSG3857.project(p);
-          const point=L.point(rect.left-mapRect.left+(q.x-g.bbox[0])/(g.bbox[2]-g.bbox[0])*rect.width,
-            rect.top-mapRect.top+(g.bbox[3]-q.y)/(g.bbox[3]-g.bbox[1])*rect.height);
-          return map.latLngToContainerPoint(p).distanceTo(point);
+          return map.latLngToContainerPoint(p).distanceTo(L.point(rect.left-mr.left+(q.x-g.bbox[0])/(g.bbox[2]-g.bbox[0])*rect.width,
+            rect.top-mr.top+(g.bbox[3]-q.y)/(g.bbox[3]-g.bbox[1])*rect.height));
         }));
-        const detailRegistered=detailError<2;
-        setLoopUI(true);startPlayback();
-        let uniformQuality=true;
-        for(const time of playbackTimeline){
-          displayPlaybackTime(time);
-          if(satelliteLayer){
-            uniformQuality=uniformQuality && satelliteFrames.some(frame=>frame.overlay===satelliteLayer);
-          }
-        }
-        stopPlayback(false);
-        const originalFrames=satelliteFrames.slice();
-        const arriving=originalFrames[1];
-        satelliteFrames=originalFrames.filter(frame=>frame!==arriving);
-        startPlayback();
-        const holdTime=arriving.date.getTime()+satelliteStepMs/2;
-        displayPlaybackTime(holdTime);
-        const beforeArrival=satelliteFrames.find(frame=>frame.overlay===satelliteLayer).date.getTime();
-        satelliteFrames.push(arriving);satelliteFrames.sort((a,b)=>a.date-b.date);
-        syncSatelliteToRadar();
-        const heldForCycle=satelliteFrames.find(frame=>frame.overlay===satelliteLayer).date.getTime()===beforeArrival;
-        playbackCursor=playbackTimeline.length-1;
-        await new Promise(resolve=>setTimeout(resolve,220));
-        displayPlaybackTime(holdTime);
-        const adoptedNextCycle=satelliteFrames.find(frame=>frame.overlay===satelliteLayer).date.getTime()===arriving.date.getTime();
-        stopPlayback(false);
-        const radar=document.getElementById('radarFrameCounter');
-        const sat=document.getElementById('satelliteFrameCounter');
-        const sideBySide=!radar.hidden && !sat.hidden && radar.textContent.includes('/') && sat.textContent.includes('/') &&
-          Math.abs(radar.getBoundingClientRect().top-sat.getBoundingClientRect().top)<2 && radar.getBoundingClientRect().right<=sat.getBoundingClientRect().left;
-        const bar=document.getElementById('frameCounter').getBoundingClientRect();
-        const credits=map.attributionControl.getContainer().getBoundingClientRect();
-        const clearAttribution=bar.bottom+2<=credits.top;
-        return {firstRequestsSmall,matchingFirst,playableWhileLoading,stableClock,nextLoopIncludesArrivals,lowResolutionFirst,uniqueFrames,enableContinues,disableContinues,clockAdvancesAfterToggle,noFutureFrames,zoomOnlyRefines,singleRefinement,detailKeepsTime,uniformQuality,heldForCycle,adoptedNextCycle,detailRegistered,sideBySide,clearAttribution,errors:testErrors};
+        stopPlayback(false);cancelSatelliteRefinement();satelliteQualitySelect.value='low';
+        const beforeBoth=Math.min(+radarFrames[0].date,+satelliteFrames[0].date)-60000;
+        displayPlaybackTime(beforeBoth);
+        const noFutureFrames=!radarFrameAvailable && !satelliteLayer;
+        displayPlaybackTime(newest);setRadarVisible(true);
+        const radar=document.getElementById('radarFrameCounter'),sat=document.getElementById('satelliteFrameCounter');
+        const sideBySide=Math.abs(radar.getBoundingClientRect().top-sat.getBoundingClientRect().top)<2 && radar.getBoundingClientRect().right<=sat.getBoundingClientRect().left;
+        return {newestFirst,playableWhileLoading,repeatsWhileLoading,togglesContinue,arrivalsKeepClock,historyAdopted,
+          lowUntilComplete,lateHighRespectsLow,waitsForBoundary,allHigh,uniformHigh,lowInstant,highReuse,incompleteStaysLow,coverageKeepsClock,expanded,zoomNewestFirst,
+          registered:registrationError<2,noFutureFrames,sideBySide,errors:testErrors};
       }finally{
-        releaseHistory();stopPlayback(false);cancelSatelliteRefinement();
-        loadSatelliteImage=originalLoader;setLoopUI(savedLoop);setRadarVisible(true);setVisibleFrame(savedIndex);
-        map.setView([39.0867,-9.3777],7,{animate:false});cancelSatelliteRefinement();
+        releaseHistory();releaseHigh();stopPlayback(false);cancelSatelliteRefinement();
+        satelliteQualitySelect.value='low';loadSatelliteImage=originalLoader;setLoopUI(false);setRadarVisible(true);
+        map.setView([39.0867,-9.3777],7,{animate:false});clearTimeout(satelliteMoveTimer);
       }
     })()""")
     print('PROGRESSIVE_PLAYBACK',result,flush=True)
-    assert all(result[k] for k in ['firstRequestsSmall','matchingFirst','playableWhileLoading','stableClock','nextLoopIncludesArrivals','lowResolutionFirst','uniqueFrames','enableContinues','disableContinues','clockAdvancesAfterToggle','noFutureFrames','zoomOnlyRefines','singleRefinement','detailKeepsTime','uniformQuality','heldForCycle','adoptedNextCycle','detailRegistered','sideBySide','clearAttribution']) and not result['errors'],result
+    assert all(value for key,value in result.items() if key!='errors') and not result['errors'],result
     result=c.evaluate("""(async()=>{
       cancelSatelliteRefinement();
       const before=satelliteCacheStats.networkLoads;

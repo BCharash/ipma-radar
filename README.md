@@ -23,7 +23,9 @@ and request results are recorded in the design journal.
 combined views. Low-resolution satellite observations load progressively at their
 native 10/15-minute cadence. Playback is available once two observations are
 loaded; a running animation keeps its time sequence while more frames arrive.
-The next loop (or a new Play) includes newly available frames. The interval selector controls radar only. History
+The next pass includes newly available frames. While history loads, playback
+repeats even with Loop off; after loading, it plays the expanded history once
+and then follows the Loop setting. The interval selector controls radar only. History
 selection applies to both. Failed satellite images are skipped. When radar is
 visible at Play, its sequence starts the clock; otherwise satellite does.
 That clock keeps running when radar is checked or unchecked. Each source shows
@@ -34,27 +36,29 @@ invented between frames. These animations show observed history, not a forecast.
 
 Both radar toggle directions change visibility without stopping or restarting
 playback. Radar and satellite frame numbers and Lisbon-local times appear side
-by side at the bottom of the map. Animation consistently uses overview imagery,
-even when a paused frame has a cached detailed version. Pausing and finishing
-playback retain the current map view; detail inspection keeps the same requested
-observation time. A complete higher-detail animation is not prepared in this version.
+by side at the bottom of the map. **Low res / High res** compares the same
+observations at different image sizes. Low is the default (256-pixel maximum
+side). High prepares the entire matching movie (512 pixels on a small viewport,
+768 otherwise), showing progress while Low continues. It switches all frames
+together at the next playback boundary, or immediately while paused. An
+incomplete High batch leaves Low in use. Switching back to Low is immediate;
+both resolutions are cached. Pausing retains the current map view and clock.
 
-**Refresh** updates both sources. Zoom reprojects the loaded history without
-reloading it. While paused, the selected observation can receive a higher-detail
-viewport image; other history frames are retained. A new detailed frame does not
-change its observation time. Pan outside the prepared history and use Refresh
-to prepare history for the new area. Failed updates retain previous imagery. Successful images are reused from
-a bounded memory cache and browser Cache Storage (when available), including
-across page reloads. Known failed requests are briefly deferred before retrying.
-The first uncached visit to a product/region still depends on the provider.
+**Refresh** updates both sources. Zoom/pan reprojects the existing imagery
+immediately. If the prepared scene no longer fits the viewport/zoom, the app
+automatically fetches coverage newest to oldest. Each observation retains its
+old registered image until its same-time replacement arrives. Small movements
+within a reusable padded scene require no new coverage. Selecting High prepares
+a complete matching High batch for the new scene after Low history loads.
+Successful images are reused from a bounded memory cache and browser Cache
+Storage (when available), including across page reloads. Known failed requests
+are briefly deferred. The first uncached visit still depends on the provider.
 
-For a cold load, the app requests only the relevant satellite-family catalogue,
-then queues small registered observations for the selected radar time and an
-earlier slot so a slow newest image cannot block a usable earlier image.
-The whole history loads at low resolution first. Paused-frame detail uses its
-own explicit registered bounds, retaining the overview as a fallback on zoom.
-History preparation stops after 60 seconds with partial
-results retained and an incomplete-history message; Refresh retries missing data.
+Cold loads request only the relevant satellite-family catalogue, then two small
+registered images at a time, newest to oldest. Failed observations are skipped.
+History preparation stops after 60 seconds with partial results retained and an
+incomplete-history message; Refresh retries missing data. This is not a
+preprocessed satellite tile service and cannot guarantee instant loading.
 
 Local coastline and country-border outlines remain above both satellite and
 radar, including at 100% imagery opacity. They cover Portugal and the nearby
@@ -111,7 +115,7 @@ current file layout.
 | `src/js/radarControls.js` | Control elements, status messages, frame times, and control presentation |
 | `src/js/satellite.js` | Public satellite catalogue, registered history images, timestamps, opacity, and radar toggle |
 | `src/js/satelliteCache.js` | Bounded memory/persistent satellite image caches and image loading |
-| `src/js/satelliteDetail.js` | Paused-frame detail loading without rebuilding history on zoom |
+| `src/js/satelliteDetail.js` | Complete High-resolution batch staging and atomic sequence switching |
 | `src/js/mapFeatures.js` | Coastline and country-border outlines above the imagery |
 | `src/js/app.js` | Shared timeline state, loading batches, refresh coordination, event binding, and startup |
 
@@ -154,6 +158,6 @@ python3 tests/browser-check.py
 
 It uses an isolated browser profile and public imagery, checking opacity,
 satellite-only/combined animation, timestamp ordering and lag labels,
-first-image priority, cache reuse, registration after pan/zoom, and failure recovery. It requires network access
+newest-first loading, full High batch switching, automatic coverage, cache reuse, registration after pan/zoom, and failure recovery. It requires network access
 and can take several minutes. It saves a mobile screenshot in the system
 temporary directory. Real iPhone/Safari testing remains separate.

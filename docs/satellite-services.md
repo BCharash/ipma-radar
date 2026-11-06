@@ -70,4 +70,54 @@ products using actual returned observations, not denser invented timestamps.
 
 Neither candidate has replaced a production source. Cloud-only photographic
 transparency, two-minute observations, a complete detailed-animation preload,
-and a Meteoblue-equivalent delivery service are not implemented.
+and a Meteoblue-equivalent delivery service are not implemented. Complete
+High-resolution sequence staging was subsequently implemented below.
+
+
+## Follow-up: free access and cloud-only rendering
+
+Reviewed during the approved playback/coverage/resolution work on 6 November
+2026. The user now accepts a free API key if limited noncommercial distribution
+is permitted. This changes the service-selection constraint; no key is needed
+for the current WMS sources and none has been added.
+
+**RealEarth:** its official terms explicitly allow public integration in websites
+and mobile apps, with attribution `Source: SSEC RealEarth, UW-Madison`. Its access
+page describes free composites up to 512 × 512 and watermark thresholds of 500
+megapixels per rolling 24 hours (higher limits for registered users). These are
+service limits, not a guarantee of low latency or unlimited distribution.
+[Terms](https://www.ssec.wisc.edu/realearth/terms-of-use/),
+[access limits](https://www.ssec.wisc.edu/realearth/realearth-pro/),
+[product catalogue](https://realearth.ssec.wisc.edu/products/).
+
+The public catalogue was inspected for global visible/IR imagery. Available
+full-scene imagery is not evidence of clear-sky alpha: a visible product's
+transparent *night* region is different from transparent clear ground/water.
+A suitable observed, cloud-only photographic Portugal sequence was not verified.
+RealEarth has therefore not been substituted for EUMETView.
+
+**EUMETSAT Cloud Mask (`msg_fes:clm`):** the provider's product guide distinguishes
+clear water, clear land, cloud, and unprocessed regions. Its published example
+renders cloud white, land green, and water blue. This is a promising source for
+a categorical cloud-only overlay with clear-area alpha, rather than guessing
+clouds from ordinary visible/IR colours. It is not photographic cloud texture.
+The live catalogue advertises 15-minute observations. A small PNG sample and
+official legend were retrieved, but no production conversion is included.
+[Cloud Mask guide](https://user.eumetsat.int/s3/eup-strapi-media/pdf_clm_pg_6b00d53e6b.pdf),
+[product catalogue](https://user.eumetsat.int/catalogue/EO:EUM:DAT:MSG:CLM).
+
+The current EUMETSAT policy permits redistribution of Core data under CC BY 4.0;
+this review did not establish this specific product's current Core designation.
+Do not treat access to its WMS image as sufficient verification of redistribution
+terms for a new derived cloud product.
+[Data policy](https://www-cdn.eumetsat.int/files/2024-07/45173%20-%20Data%20Policy%281419774%20V1%29.pdf).
+
+A Meteoblue iOS subscription has not been treated as an API entitlement. No free
+satellite API tier with the requested photographic transparency, Portugal
+history, and redistribution rights was verified. That remains a separate
+provider/prototype investigation, not a completed application feature.
+
+The approved **Low / High** comparison is now implemented for existing products:
+both sizes are cached; High waits for a complete matching set and switches at a
+playback boundary. This improves consistency and comparison, not the native
+satellite cadence or provider rendering latency.

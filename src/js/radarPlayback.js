@@ -60,13 +60,13 @@ function stopPlayback(restoreView=true){
     map.setView(playbackView.center,playbackView.zoom,{animate:false});
   }
   playbackView = null;
+  commitSatelliteQuality();
 }
 
 function startPlayback(){
   if(playing || (satelliteLoading && satelliteFrames.length < 2)) return;
   const frames = availablePlaybackFrames();
   if(frames.length < 2) return;
-  cancelSatelliteRefinement();
   playbackSource = radarVisible ? "radar" : "satellite";
   playbackView = {center:map.getCenter(),zoom:map.getZoom()};
   playbackTimeline = frames.map(frame => frame.date.getTime());
@@ -83,8 +83,11 @@ function scheduleNextFrame(){
     if(!playing) return;
     playbackCursor++;
     if(playbackCursor >= playbackTimeline.length){
-      if(looping){
-        playbackTimeline = availablePlaybackFrames().map(frame => frame.date.getTime());
+      commitSatelliteQuality();
+      const availableTimes = availablePlaybackFrames().map(frame => frame.date.getTime());
+      const historyExtended = availableTimes.some(time => !playbackTimeline.includes(time));
+      if(looping || satelliteLoading || historyExtended){
+        playbackTimeline = availableTimes;
         playbackSatelliteTimes = new Set(satelliteFrames.map(frame => frame.date.getTime()));
         playbackCursor = 0;
       }

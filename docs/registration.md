@@ -38,14 +38,17 @@ The snapped corners define both the requested WMS BBOX and the Leaflet overlay,
 so snapping does not shift an image within a different rectangle. Scenes are
 reused within their coverage and a one-level zoom difference. This keeps image
 URLs stable for caching. All overview history uses a maximum image side of 256
-pixels. Those observations stay registered through zoom changes without
-reloading. A paused observation can receive a separate viewport detail image
-(512 pixels on smaller viewports, 768 otherwise). Its WMS BBOX and its Leaflet
-corners are derived from the same projected rectangle. Refinement can cover a
-different rectangle from the overview, but retains the same observation time
-and its own exact registration. The overview stays available as a fallback
-when zooming beyond the detail rectangle. Refresh prepares history coverage
-for a new region when required.
+pixels. Leaflet keeps those images registered during movement. Moving beyond a
+reusable scene automatically requests expanded coverage newest to oldest;
+existing observations retain their images until same-time replacements arrive.
+
+High resolution uses the same timestamps and projected rectangle at 512 pixels
+on small viewports or 768 otherwise. The entire High batch must be ready before
+it replaces Low at a playback boundary (or while paused). No individual detailed
+frames enter a Low movie. Both image sizes are cached independently by their
+complete WMS request URL. A new coverage request uses Low while the matching High
+batch is prepared. Geographic placement and requested observation time remain
+explicit for every overlay, at either size.
 
 Local Natural Earth coastlines and country borders are projected by Leaflet
 in a separate pane at z-index 460, above radar and satellite. Their geometry and
@@ -76,9 +79,9 @@ then-available sequence and observations.
 During combined loading, the radar play-through
 starts within the available satellite time range. Both original frame indices
 and observation times are shown in separate bottom readouts. Playback uses
-overview imagery consistently and excludes cached detailed frames, avoiding
-per-frame changes in image sampling. Paused detail uses the same requested
-observation time and does not move the shared clock.
+one resolution consistently within each pass. New history extends playback
+at a boundary even with Loop off; it repeats while loading and then respects
+the Loop setting. Switching the complete resolution batch retains the clock.
 
 ## Checks
 

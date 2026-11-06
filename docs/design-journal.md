@@ -1147,6 +1147,48 @@ zoom refinement without history reload, and numeric registration. Existing
 cache, opacity, outlines, paired readouts, and update-failure tests passed with
 no JavaScript errors. Real iOS comparison remains a device acceptance step.
 
+## 6 November 2026 — Approved progressive coverage and Low/High comparison
+
+The user approved the plan before implementation. This entry supersedes the
+previous paused-only detail and manual coverage-refresh behavior.
+
+- Low history requests run newest to oldest with two workers. Playback can start
+  after two observations, repeats while loading even with Loop off, and adopts
+  earlier arrivals at a pass boundary. If loading finishes before that boundary,
+  newly extended history still gets a pass before Loop-off stops playback.
+- Radar check/uncheck continues to preserve the playback source, timer, and UTC
+  clock. Low history arrivals do not change a running pass's eligible times.
+- Pan/zoom automatically prepares a new padded scene when existing scene reuse
+  is unsuitable. The current movie continues; each old observation is replaced
+  only by its same-time image for the expanded region. Cached URLs are reused.
+- The explicit Low/High selector defaults to Low. High stages the complete set
+  with the same timestamps and registered bounds at larger dimensions. Low
+  stays visible until every High frame is ready. The batch switches at a pass
+  boundary, including the end of a non-looping pass, or immediately when paused.
+  Missing High frames retain Low. Low can be selected immediately, and both
+  sizes remain in bounded memory/persistent caches.
+- Removed automatic one-frame paused refinement, so individual quality changes
+  no longer enter an otherwise uniform movie. Existing radar bounds and source,
+  satellite projection, opacity controls, and outline pane remain unchanged.
+
+Provider follow-up is in [satellite services](satellite-services.md). RealEarth
+permits free public integration with attribution and usage limits, but no
+suitable cloud-only photographic Portugal sequence was verified. EUMETSAT's
+15-minute Cloud Mask remains a promising categorical overlay candidate; its
+product-specific redistribution designation and a verified rendering prototype
+remain outstanding. No API key, cloud-colour heuristic, or new cloud layer was
+added to the application.
+
+Validation includes live Chrome imagery plus deterministic delayed history/High
+responses: newest-first order, playback with Loop off during loading, stable
+clock through arrivals/toggles, boundary adoption, no High switch before complete,
+uniform High playback, immediate Low/cached High reuse, incomplete High fallback,
+automatic expanded coverage, no future-time pairing, side-by-side readouts, and
+numeric projection placement. Existing cache persistence, opacity, full-opacity
+outlines, update-failure retention, and stale-request cancellation are also
+checked. Desktop Chrome uses a simulated mobile viewport; real iPhone/Safari
+acceptance remains outstanding. Timings are service samples, not guarantees.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite

@@ -149,7 +149,7 @@ function displaySatelliteFrame(index){
   let selected = null;
   for(let i=0; i<satelliteFrames.length; i++){
     const candidate = satelliteFrames[i];
-    const detailFits = !playing && candidate.detail && candidate.detail.geometry.bounds.contains(map.getBounds());
+    const detailFits = satelliteQualityActive === "high" && candidate.detail;
     const overlay = detailFits ? candidate.detail.overlay : candidate.overlay;
     candidate.overlay.setOpacity(i === index && !detailFits ? satelliteOpacity : 0);
     if(candidate.detail) candidate.detail.overlay.setOpacity(i === index && detailFits ? satelliteOpacity : 0);
@@ -164,10 +164,10 @@ function displaySatelliteFrame(index){
     return;
   }
   currentSatelliteIndex = index;
-  if(satelliteLoading) return;
+  if(satelliteLoading || satelliteDetailRequest || satelliteQualityPending) return;
   setSatelliteStatus(SATELLITE_PRODUCTS[frame.product || satelliteSelect.value].label +
     " · " + satelliteStepMs/60000 + "-min observations" +
-    (frame.detail && selected === frame.detail.overlay ? " · detailed" : " · low resolution") +
+    (frame.detail && selected === frame.detail.overlay ? " · high resolution" : " · low resolution") +
     (satelliteHistoryIncomplete ? " · history incomplete; Refresh to retry" : "") +
     (satelliteMissingCount ? " · " + satelliteMissingCount + " unavailable images skipped" : "") +
     (playbackTime !== null && playbackTime-frame.date.getTime() >= satelliteStepMs
@@ -193,15 +193,18 @@ async function updateSatellite(force=false){
   const started = performance.now();
   clearTimeout(satelliteMoveTimer);
   cancelSatelliteRefinement();
-  stopPlayback(false);
   const generation = ++satelliteGeneration;
   if(satelliteRequest) satelliteRequest.abort();
   const productKey = satelliteSelect.value;
   const product = SATELLITE_PRODUCTS[productKey];
+  if(satelliteFrames.some(frame => frame.product !== productKey)) stopPlayback(false);
+  satelliteQualityActive = "low";
   satelliteLoading = !!product;
   satelliteOpacityControl.disabled = !product;
   updatePlaybackControls();
+  satelliteQualitySelect.disabled = !product;
   if(!product){
+    if(playing && playbackSource === "satellite") stopPlayback(false);
     removeSatelliteLayer();
     setSatelliteStatus("");
     updateFrameCounter();
@@ -235,15 +238,6 @@ async function updateSatellite(force=false){
     const oldest = newest-Number(historySelect.value)*3600000;
     const dates = [];
     for(let time=newest; time>=oldest; time-=metadata.stepMs) dates.push(new Date(time));
-    // The first request must be displayable against the selected radar time.
-    const radarTime = playbackTime ?? (radarVisible && radarFrames.length ? radarFrames[currentFrameIndex].date.getTime() : newest);
-    const targetTime = newest-Math.max(0,Math.ceil((newest-radarTime)/metadata.stepMs))*metadata.stepMs;
-    const target = new Date(targetTime);
-    if(!dates.some(date => date.getTime() === targetTime)) dates.push(target);
-    dates.sort((a,b) => {
-      const priority = date => date.getTime() === targetTime ? 0 : date.getTime() < targetTime ? 1 : 2;
-      return priority(a)-priority(b) || b-a;
-    });
     const load = async (date, renderGeometry=geometry, preview=false, timeoutMs=20000) => {
       const image = await loadSatelliteImage(satelliteImageURL(product,date,renderGeometry),request.signal,timeoutMs);
       if(generation !== satelliteGeneration || request.signal.aborted) return;
@@ -253,32 +247,35 @@ async function updateSatellite(force=false){
         pane:"satellitePane",opacity:0,interactive:false,
         attribution:'Satellite © <a href="https://www.eumetsat.int/">EUMETSAT</a>'
       }).addTo(map);
-      const selectedTime = committed && satelliteFrames[currentSatelliteIndex]
-        ? satelliteFrames[currentSatelliteIndex].date.getTime() : null;
-      const existing = staged.findIndex(frame => frame.date.getTime() === date.getTime());
-      if(existing >= 0){
-        staged[existing].overlay.remove();
-        if(staged[existing].detail) staged[existing].detail.overlay.remove();
-        staged.splice(existing,1);
-      }
+      const selectedTime = satelliteFrames[currentSatelliteIndex]?.date.getTime();
       staged.push({date,overlay,geometry:renderGeometry,product:productKey,preview:true});
       staged.sort((a,b) => a.date-b.date);
-      const radarTime = playbackTime ?? (radarVisible && radarFrames.length ? radarFrames[currentFrameIndex].date.getTime() : Infinity);
-      if(!committed && staged.some(frame => frame.date.getTime() <= radarTime)){
-        // Keep the old scene until replacement imagery can actually be shown.
-        stopPlayback(false);
-        for(const frame of oldFrames){
-          frame.overlay.remove();
-          if(frame.detail) frame.detail.overlay.remove();
+      const sameProduct = !satelliteFrames.length || satelliteFrames[0].product === productKey;
+      const clock = playbackTime ?? Infinity;
+      if(sameProduct || staged.some(frame => frame.date.getTime() <= clock)){
+        if(!committed){
+          if(!sameProduct){
+            for(const frame of oldFrames){ frame.overlay.remove(); frame.detail?.overlay.remove(); }
+            satelliteFrames = [];
+          }
+          satelliteStepMs = metadata.stepMs;
+          satelliteHistoryIncomplete = false;
+          committed = true;
+          timings.firstImageMs = performance.now()-started;
         }
-        satelliteFrames = staged;
-        satelliteStepMs = metadata.stepMs;
-        satelliteHistoryIncomplete = false;
-        committed = true;
-        timings.firstImageMs = performance.now()-started;
-      }
-      if(committed){
-        const preserved = selectedTime === null ? -1 : satelliteFrames.findIndex(frame => frame.date.getTime() === selectedTime);
+        // Replace only this observation. Older coverage remains until its own
+        // same-time image arrives, so a pan never clears the running movie.
+        for(const incoming of staged.filter(frame => !satelliteFrames.includes(frame))){
+          const existing = satelliteFrames.findIndex(frame => +frame.date === +incoming.date);
+          if(existing >= 0){
+            satelliteFrames[existing].overlay.remove();
+            satelliteFrames[existing].detail?.overlay.remove();
+            satelliteFrames.splice(existing,1);
+          }
+          satelliteFrames.push(incoming);
+        }
+        satelliteFrames.sort((a,b) => a.date-b.date);
+        const preserved = satelliteFrames.findIndex(frame => +frame.date === selectedTime);
         currentSatelliteIndex = preserved >= 0 ? preserved : satelliteFrames.length-1;
         syncSatelliteToRadar();
         updatePlaybackControls();
@@ -289,17 +286,22 @@ async function updateSatellite(force=false){
         : "") + "Loading animation " + staged.length + "/" + dates.length +
         (oldFrames.length && !committed ? " · previous imagery retained" : "…"));
     };
-    // Start with the selected slot and an earlier low-resolution observation.
-    // A slow newest slot must not block a usable earlier image.
+    // Request newest to oldest. Two workers let an earlier image recover
+    // from a slow or unavailable latest observation.
     let next = 0;
     await Promise.all(Array.from({length:Math.min(2,dates.length)},async () => {
       while(next < dates.length && !request.signal.aborted){
         const date = dates[next++];
-        await load(date,geometry,true,date.getTime() === targetTime ? 10000 : 15000);
+        await load(date,geometry,true,15000);
       }
     }));
     if(generation !== satelliteGeneration) return;
     if(!committed) throw new Error("No replacement satellite imagery at the selected time");
+    const wanted = new Set(dates.map(date => +date));
+    satelliteFrames = satelliteFrames.filter(frame => {
+      if(wanted.has(+frame.date)) return true;
+      frame.overlay.remove(); frame.detail?.overlay.remove(); return false;
+    });
     satelliteLoading = false;
     satelliteMissingCount = missingTimes.size;
     satelliteHistoryIncomplete = request.signal.aborted;
@@ -357,11 +359,24 @@ function initializeSatellite(){
     document.getElementById("radarOpacityValue").value = radarOpacityControl.value + "%";
     setVisibleFrame(currentFrameIndex);
   });
-  map.on("moveend", () => {
-    // Leaflet reprojects every loaded overview; zoom never reloads its history.
-    const selected = satelliteFrames.findIndex(frame => frame.overlay === satelliteLayer || frame.detail?.overlay === satelliteLayer);
-    if(!playing && selected >= 0) displaySatelliteFrame(selected);
-    else syncSatelliteToRadar();
+  satelliteQualitySelect.addEventListener("change", () => {
+    if(satelliteQualitySelect.value === "low"){
+      satelliteQualityActive = "low";
+      satelliteQualityPending = false;
+      syncSatelliteToRadar();
+    }
     queueSatelliteRefinement();
+  });
+  map.on("moveend", () => {
+    syncSatelliteToRadar();
+    clearTimeout(satelliteMoveTimer);
+    satelliteMoveTimer = setTimeout(() => {
+      if(!SATELLITE_PRODUCTS[satelliteSelect.value]) return;
+      const geometry = satelliteGeometry();
+      const uncovered = !satelliteFrames.length || satelliteFrames.some(frame =>
+        frame.geometry.bbox.join() !== geometry.bbox.join());
+      if(uncovered) updateSatellite();
+      else queueSatelliteRefinement();
+    },350);
   });
 }
