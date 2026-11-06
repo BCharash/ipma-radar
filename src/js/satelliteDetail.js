@@ -4,7 +4,8 @@
  * Low and High use identical observation times and projected request bounds.
  * Source PNGs for both resolutions share the persistent satellite cache.
  */
-const satelliteQualitySelect = document.getElementById("satelliteQuality");
+// High is automatic after Low history; a future data-saving setting can disable it.
+let satelliteHighEnabled = true;
 let satelliteQualityActive = "low";
 let satelliteQualityPending = false;
 let satelliteDetailRequest = null;
@@ -36,7 +37,7 @@ function cancelSatelliteRefinement(){
 
 function commitSatelliteQuality(){
   if(satelliteDetailRequest) return;
-  if(!satelliteQualityPending || satelliteQualitySelect.value !== "high") return;
+  if(!satelliteQualityPending || !satelliteHighEnabled) return;
   if(!satelliteFrames.length) return;
   if(satelliteDetailPrepared){
     const prepared=satelliteDetailPrepared;
@@ -58,7 +59,7 @@ function commitSatelliteQuality(){
 function queueSatelliteRefinement(force=false){
   clearTimeout(satelliteDetailTimer);
   satelliteDetailTimer=null;
-  if(satelliteLoading || satelliteCoveragePending || satelliteCoverageMessage || satelliteDetailRequest || satelliteQualitySelect.value !== "high" ||
+  if(satelliteLoading || satelliteCoveragePending || satelliteCoverageMessage || satelliteDetailRequest || !satelliteHighEnabled ||
     !SATELLITE_PRODUCTS[satelliteSelect.value] ||
     satelliteFrames.some(frame => frame.product !== satelliteSelect.value)) return;
   if(!force && satelliteHighProgress?.finished &&
@@ -75,7 +76,7 @@ function queueSatelliteRefinement(force=false){
 }
 
 async function refineSatelliteFrame(){
-  if(satelliteLoading || satelliteCoveragePending || satelliteCoverageMessage || satelliteDetailRequest || satelliteQualitySelect.value !== "high" ||
+  if(satelliteLoading || satelliteCoveragePending || satelliteCoverageMessage || satelliteDetailRequest || !satelliteHighEnabled ||
     !satelliteFrames.length) return;
   discardSatelliteDetails();
   satelliteQualityPending=false;
@@ -115,7 +116,7 @@ async function refineSatelliteFrame(){
     if(request.signal.aborted || generation !== satelliteDetailGeneration) return;
     const complete = frames.length === satelliteFrames.length && frames.every(frame =>
       satelliteFrames.includes(frame));
-    satelliteQualityPending = complete && satelliteQualitySelect.value === "high";
+    satelliteQualityPending = complete && satelliteHighEnabled;
     satelliteHighProgress.finished=true;
     if(satelliteQualityPending && playing)
       setSatelliteStatus("High ready " + details.size + "/" + frames.length +
@@ -124,7 +125,7 @@ async function refineSatelliteFrame(){
   finally{
     if(satelliteDetailRequest === request) satelliteDetailRequest = null;
     if(generation === satelliteDetailGeneration && !request.signal.aborted && !playing) commitSatelliteQuality();
-    if(satelliteQualitySelect.value === "low") syncSatelliteToRadar();
+    if(!satelliteHighEnabled) syncSatelliteToRadar();
     updateFrameCounter();
   }
 }

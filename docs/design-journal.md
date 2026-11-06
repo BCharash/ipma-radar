@@ -1400,6 +1400,25 @@ counts, retry staging and boundary upgrades, explicit retry through failure
 deferral, and the all-High-unavailable case, alongside the existing playback,
 coverage, registration and cache checks.
 
+## Automatic Low previews followed by High
+
+Removed the production Low/High selector. Selecting any satellite product,
+including startup GeoColour, now loads Low history first and automatically queues
+High preparation after that history finishes. Reframed coverage queues High once
+the complete new Low movie commits. High uses the existing four workers,
+matching UTC observations and geographic bounds, cached successes, Low fallbacks,
+and pass-boundary switching. Paused playback stays paused. Map selection or
+another satellite request cancels stale preparation through the existing request
+generations.
+
+Persistent High counts, actual displayed image dimensions and Retry High remain.
+Cache limits and geographic coverage margins are unchanged. There is no new
+user-facing setting to disable High yet; that remains future work.
+
+Validation includes a gated Low history proving that no High requests start
+before Low finishes, automatic High startup with no selector action, and the
+existing mixed-quality, retry, cache, coverage and playback checks.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite

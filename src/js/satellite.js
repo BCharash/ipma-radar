@@ -212,7 +212,6 @@ async function updateSatellite(force=false,coverageOnly=false){
   satelliteLoading = !!product;
   satelliteOpacityControl.disabled = !product;
   updatePlaybackControls();
-  satelliteQualitySelect.disabled = !product;
   if(!product){
     if(playing && playbackSource === "satellite") stopPlayback(false);
     removeSatelliteLayer();
@@ -397,14 +396,6 @@ function initializeSatellite(){
     radarOpacity = Number(radarOpacityControl.value)/100;
     document.getElementById("radarOpacityValue").value = radarOpacityControl.value + "%";
     setVisibleFrame(currentFrameIndex);
-  });
-  satelliteQualitySelect.addEventListener("change", () => {
-    if(satelliteQualitySelect.value === "low"){
-      cancelSatelliteRefinement();
-      satelliteQualityActive = "low";
-      syncSatelliteToRadar();
-    }
-    queueSatelliteRefinement(true);
   });
   map.on("moveend", () => {
     syncSatelliteToRadar();

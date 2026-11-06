@@ -36,21 +36,21 @@ invented between frames. These animations show observed history, not a forecast.
 
 Both radar toggle directions change visibility without stopping or restarting
 playback. Radar and satellite frame numbers and Lisbon-local times appear side
-by side at the bottom of the map. **Low res / High res** compares the same
-observations at different image sizes. Low is the default (256-pixel maximum
-side). High prepares the entire matching movie (512 pixels on a small viewport,
-768 otherwise), showing processed and ready counts while the current movie continues.
+by side at the bottom of the map. Every satellite view, including the initial
+GeoColour view, automatically loads Low previews first (256-pixel maximum side),
+then prepares High for the same observations (512 pixels on a small viewport,
+768 otherwise). There is no Low/High selector. Processed and ready counts remain
+visible while the current movie continues.
 After every request succeeds, fails or times out, it switches the prepared sequence
 at the next playback boundary, or immediately while paused. Unavailable High
 images use their matching Low frames. The persistent readout reports, for example,
 **High ready 16/19 · 3 Low fallbacks**. **Retry High** retries the missing images,
 reusing successful ones and applying recovered images at the next boundary.
 It also bypasses the temporary failed-request deferral for those images.
-Switching back to Low is immediate;
-both resolutions are cached. Beside the satellite frame count, the readout shows
+Both resolutions are cached. Beside the satellite frame count, the readout shows
 the displayed **Low/High** image and its actual decoded pixel dimensions, such as
-**Low 154×256 px**. It reports what is on screen, even if High is selected while
-its replacement sequence is still loading. Pixel dimensions are not native
+**Low 154×256 px**. It reports what is on screen while the automatic High
+replacement sequence is still loading. Pixel dimensions are not native
 ground resolution. Pausing retains the current map view and clock.
 
 **Refresh** updates both sources. Zoom/pan reprojects the existing imagery
@@ -62,8 +62,9 @@ paused, preserving the UTC clock. It does not mix narrow old rectangles with
 expanded frames within a pass. A narrower rectangle can remain visible temporarily
 while loading; if any replacement is missing, previous coverage stays in use and
 Refresh retries. Initial history still loads progressively. Small movements
-within a reusable padded scene require no new coverage. Selecting High prepares
-a matching High/Low fallback batch for the new scene after Low history loads.
+within a reusable padded scene require no new coverage. High preparation starts
+automatically for the new scene after its Low movie commits. Switching to Map
+cancels satellite preparation.
 Successful images are reused from a bounded memory cache and browser Cache
 Storage (when available), including across page reloads. Known failed requests
 are briefly deferred. The first uncached visit still depends on the provider.
@@ -206,7 +207,7 @@ python3 tests/browser-check.py
 
 It uses an isolated browser profile and public imagery, checking opacity,
 satellite-only/combined animation, timestamp ordering and lag labels,
-newest-first loading, full High batch switching, automatic coverage, cache reuse, registration after pan/zoom, and failure recovery. It requires network access
+newest-first loading, automatic Low-to-High preparation, High fallback batches, automatic coverage, cache reuse, registration after pan/zoom, and failure recovery. It requires network access
 and can take several minutes. It saves a mobile screenshot in the system
 temporary directory. Real iPhone/Safari testing remains separate.
 

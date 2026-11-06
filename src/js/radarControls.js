@@ -112,7 +112,7 @@ function updateFrameCounter(){
       (index < 0 ? "" : " · " + clock(satelliteFrames[index].date));
   }
   const progress=satelliteHighProgress;
-  const showHigh=satelliteQualitySelect.value==="high" && !satelliteReadout.hidden && progress;
+  const showHigh=satelliteHighEnabled && !satelliteReadout.hidden && progress;
   if(showHigh){
     const line=document.createElement("span");
     line.className="satellite-high-progress";
