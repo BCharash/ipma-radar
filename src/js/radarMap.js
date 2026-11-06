@@ -28,6 +28,9 @@ let map = null;
 
 let radarOverlays = [];
 
+let radarVisible = true;
+let radarOpacity = 0.8;
+
 let radarRangeLayer = null;
 
 let radarRangeVisible = false;
@@ -259,8 +262,8 @@ function setVisibleFrame(index){
   ){
 
     radarOverlays[i].setOpacity(
-      i===index
-        ? .80
+      radarVisible && i===index
+        ? radarOpacity
         : 0
     );
   }
@@ -269,4 +272,24 @@ function setVisibleFrame(index){
     index;
 
   updateFrameCounter();
+  syncSatelliteToRadar();
+}
+
+
+function setRadarVisible(value){
+
+  radarVisible = value;
+  radarToggle.checked = value;
+
+  if(!value){
+    stopPlayback(false);
+  }
+
+  setVisibleFrame(currentFrameIndex);
+  updateFrameCounter();
+
+  document.getElementById("radarLegend").hidden = !value;
+
+  updatePlaybackControls();
+  syncSatelliteToRadar();
 }

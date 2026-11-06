@@ -86,13 +86,16 @@ function hideStatus(){
 
 function updateFrameCounter(){
 
-  if(!radarFrames.length){
+  const frames = playbackFrames();
+  const index = playbackIndex();
+
+  if(!frames.length){
     frameCounter.style.display = "none";
     return;
   }
 
   const frame =
-    radarFrames[currentFrameIndex];
+    frames[index];
 
   const localTime =
     new Intl.DateTimeFormat(
@@ -106,10 +109,10 @@ function updateFrameCounter(){
     ).format(frame.date);
 
   frameCounter.textContent =
-    "Image " +
-    (currentFrameIndex + 1) +
+    (radarVisible ? "Radar " : "Satellite ") +
+    (index + 1) +
     " of " +
-    radarFrames.length +
+    frames.length +
     " · " +
     localTime;
 
@@ -178,7 +181,7 @@ function setPlayingUI(value){
   playButton.setAttribute(
     "aria-label",
     value
-      ? "Pause radar animation"
-      : "Play radar animation"
+      ? "Pause animation"
+      : "Play animation"
   );
 }

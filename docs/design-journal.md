@@ -568,6 +568,10 @@ This is relevant when moving the radar into the larger application: the radar it
 
 ### Things deliberately excluded
 
+Status update, 6 November 2026: the original satellite exclusion below is
+superseded by the user's explicit request for cloud imagery with an optional
+simultaneous radar overlay. See the dated satellite entry later in this journal.
+
 Satellite imagery was investigated earlier but was explicitly excluded.
 
 Do not reintroduce satellite view unless specifically requested.
@@ -813,10 +817,148 @@ checks verified local HTML assets, manifest icons, documentation links, and
 unchanged application JavaScript/CSS. Browser and installed-PWA icon checks
 remain to be performed after the path changes.
 
+## 6 November 2026 — Add satellite backgrounds without an API key
+
+This initial static-background implementation is superseded by the opacity and
+animation correction recorded in the next dated entry below.
+
+The user's goal is to see meaningful rain systems approaching their location.
+They do not want rain-gauge measurements or an API key. The previously failed
+1/2 mm/h classification experiments remain closed; the existing 0.1/0.5 mm/h
+visual filter is preserved. Nowcasting is a requested future investigation,
+separate from this satellite addition.
+
+Added independent background selection (Map, Visible, Infrared, Hybrid) and a
+Rain radar toggle. Map with radar remains the default. The satellite pane sits
+above the street tiles and below IPMA radar; location markers and range circles
+retain their existing layering. Switching radar off also hides its legend/time
+counter, stops playback, and disables its history/playback controls. Radar can
+be re-enabled without reloading its history.
+
+Data comes directly from the public
+[EUMETView WMS](https://view.eumetsat.int/geoserver/wms?service=WMS&request=GetCapabilities),
+without an account, API key, or proxy. Verified catalogue products:
+
+| View | Provider layer |
+| --- | --- |
+| Visible (daylight) | `mtg_fd:vis06_hrfi` |
+| Infrared | `msg_fes:ir108` |
+| Hybrid (Geo Colour) | `mtg_fd:rgb_geocolour` |
+
+Use the catalogue's published default observation time explicitly in WMS image
+requests. Display that time separately from the radar frame time, with an older
+image indication after 90 minutes. Hybrid is the provider's Geo Colour product;
+the app does not synthesize a day/night image. EUMETSAT attribution is displayed
+on the map when satellite is active.
+
+This first addition uses a fixed latest satellite image while radar history
+plays, clearly stated in the satellite status. It does not synchronize satellite
+history to radar frames. Refresh requests updated satellite metadata alongside
+the existing radar rebuild. Product switches cancel obsolete metadata requests;
+generation checks reject late results. Metadata and initial image-loading
+timeouts report satellite failure independently while retaining map and radar.
+
+Validation: public catalogue and explicit-time GetMap requests for all three
+products succeeded without credentials and returned PNG images. Responses
+included `Access-Control-Allow-Origin: *`. Existing simulated radar regression
+checks passed with the new module loaded. Live headless Chrome loaded all three
+products as real WMS tiles alongside 37 IPMA radar frames, without JavaScript
+errors. A 390-by-844 mobile viewport showed no horizontal overflow; the playback
+row was adjusted to fit at typical phone widths and the screenshot was inspected.
+Browser checks also passed for hiding radar across refresh, restoring radar and
+the map view, offline metadata failure, tile failure, and late responses after
+switching back to Map. These mobile viewport checks do not replace a real
+iPhone/Safari acceptance check.
+
+## 6 November 2026 — Correct satellite opacity, animation, and provider review
+
+The initial satellite addition was incomplete for the requested use: it offered
+an opaque, static latest-image background. This entry supersedes that behavior.
+
+Added separate Satellite and Radar opacity controls, defaulting to 60% and 80%.
+The map is visible beneath the imagery. Shared Play/Pause, Previous, Next, and
+Loop controls now animate satellite alone or satellite with radar. History is
+preloaded in batches of at most three, and failed images are skipped. Satellite
+uses its provider's native 10/15-minute cadence; the interval selector controls
+radar only. The satellite time is displayed separately from the radar time.
+
+Combined playback selects a loaded satellite observation at or before the radar
+frame, never a future satellite frame. Internal gaps longer than two native
+intervals show no matching satellite image. Beyond the latest satellite time,
+the latest observation can remain visible with its lag stated. This is observed
+history, not nowcasting.
+
+### IPMA satellite investigation
+
+IPMA should have been checked before the original provider choice. Inspected
+these public resources on 6 November 2026:
+
+- [Satellite viewer](https://www.ipma.pt/pt/otempo/obs.satelite/): visible,
+  infrared, and combined choices are available. The inspected page listed hourly
+  JPEGs under date-specific, non-deterministic path segments. Its HTTP response
+  did not include an Access-Control-Allow-Origin header, preventing a normal
+  cross-origin browser fetch of that index. Displaying a known image URL is a
+  different operation from discovering the image index.
+- [Combined viewer script](https://www.ipma.pt/pt/otempo/teste/map-builder-dea2.js):
+  satellite overlay construction exists inside commented-out code, with a
+  satellite rectangle distinct from the radar rectangle. The old
+  `combined-msg-108/msg-108-YYYY-MM-DDTHHMM.png` pattern returned HTTP 404 for
+  four candidates on this date: 08:00, 08:15, 08:30, and 08:45 UTC.
+
+This does not establish that all IPMA satellite services are unavailable.
+Retained the verified public EUMETView WMS for this implementation: it supplies
+explicit projection/bounds, observation times, and 10/15-minute histories
+without an API key or proxy. No unverified IPMA JPEG was placed into guessed
+map bounds.
+
+### Registration and validation
+
+Satellite animation images are now WMS GetMap images for a padded viewport in
+EPSG:3857. Their requested BBOX and Leaflet overlay use exactly the same
+projected geographic corners. The longer image side is capped at 1024 pixels
+to limit history memory. Panning beyond coverage or changing zoom stops playback
+and reloads the scene; the old scene remains geographically registered during
+map transformation. IPMA radar bounds are unchanged.
+
+Live Chrome checks loaded history for all three products and passed satellite
+and radar opacity, satellite-only/combined animation, timestamp matching,
+offline/image failures, and cancellation of late results. Some real satellite
+image requests failed and were skipped. Projection checks at scene corners and
+center, including after pan and zoom, measured a maximum error of about 0.51 CSS
+pixels. This checks application placement, not instrument or ground accuracy.
+See [registration and verification](registration.md) for the contract and checks.
+Real iPhone/Safari acceptance remains outstanding.
+
+Repeatable live checks are saved in `tests/browser-check.py`. The final quick
+run passed history loading, opacity, satellite-only and combined animation,
+timestamp ordering/lag, registration after pan/zoom, and failure/cancellation
+recovery with no JavaScript errors. The longer run also exercised visible and
+infrared products. A mobile screenshot was visually inspected. Existing
+simulated radar checks passed after the shared playback changes.
+
+### Audit of the initial assessment
+
+The initial assessment used an older radar file. The newer file supplied before
+the extraction already resolved several of those findings; the extraction did
+not implement those fixes.
+
+| Item | Current status and provenance |
+| --- | --- |
+| Unavailable newest radar frame | Already searches backward up to 30 minutes; preserved from the newer baseline. |
+| Missing radar history frames | Already filters failed loads before playback; preserved from the newer baseline. |
+| Refresh timeline | Manual Refresh already rebuilt the rolling 1–3-hour window; automatic periodic refresh is not implemented. The earlier six-hour description was obsolete. |
+| Status conflicts | Satellite has its own status. Radar loading and explicit location requests still share status; full ownership/priority handling is pending. |
+| Duplicate geolocation handlers | The newer baseline already had one direct geolocation path; preserved. |
+| Scoped CSS | Pending. Page-wide body/select/layout rules remain. |
+| Private state | Pending. Scripts still share page scope. The current radar no longer has the older hard-coded beaches catalogue, but other generic names remain. |
+| Host-selected beach and lifecycle | Pending. No PraiasPortugal beach adapter, mount/resize/destroy contract, or host lifecycle integration is implemented. |
+
 ## Remaining integration work
 
-- Confirm browser and iPhone behavior after the script split and asset moves.
-- Agree on the user's requested radar improvements before implementing them.
+- Confirm iPhone/Safari behavior after the script split, asset moves, and satellite
+  addition; desktop Chrome and a simulated mobile viewport have been checked.
+- Evaluate a short, clearly labelled nowcast separately from observed history.
+- Consider automatic refresh and independent radar/location status ownership.
 - Scope radar CSS to a feature container before combining pages.
 - Encapsulate radar state and expose initialization, resize, and cleanup methods.
 - Receive beach selection and coordinates from PraiasPortugal's existing data.

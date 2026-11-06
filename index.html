@@ -28,7 +28,7 @@
   <option value="3" selected>3 h</option>
 </select>
 
-<select id="intervalSelect" aria-label="Frame interval">
+<select id="intervalSelect" aria-label="Radar frame interval" title="Radar frame interval; satellite uses its native observation interval">
   <option value="5" selected>5 min</option>
   <option value="10">10 min</option>
   <option value="15">15 min</option>
@@ -39,7 +39,7 @@
   id="refreshButton"
   class="control-button"
   type="button"
-  aria-label="Refresh radar"
+  aria-label="Refresh radar and satellite"
   title="Refresh"
 >
   <svg
@@ -59,7 +59,7 @@
   id="previousButton"
   class="control-button playback-button"
   type="button"
-  aria-label="Previous radar frame"
+  aria-label="Previous frame"
   title="Previous"
 >
   <svg
@@ -79,7 +79,7 @@
   id="playButton"
   class="control-button playback-button"
   type="button"
-  aria-label="Play radar animation"
+  aria-label="Play animation"
   title="Play"
 >
   <svg
@@ -127,7 +127,7 @@
   id="nextButton"
   class="control-button playback-button"
   type="button"
-  aria-label="Next radar frame"
+  aria-label="Next frame"
   title="Next"
 >
   <svg
@@ -143,6 +143,28 @@
   </svg>
 </button>
 
+</div>
+<div id="layerControls">
+  <label for="satelliteSelect">View</label>
+  <select id="satelliteSelect" aria-label="Map or satellite background">
+    <option value="map">Map</option>
+    <option value="visible">Visible (daylight)</option>
+    <option value="infrared">Infrared satellite</option>
+    <option value="hybrid">Hybrid satellite</option>
+  </select>
+  <label class="radar-toggle">
+    <input id="radarToggle" type="checkbox" checked>
+    Rain radar
+  </label>
+</div>
+<div id="satelliteStatus" role="status" aria-live="polite" hidden></div>
+<div id="opacityControls">
+  <label for="satelliteOpacity">Satellite</label>
+  <input id="satelliteOpacity" type="range" min="0" max="100" value="60" aria-label="Satellite opacity" disabled>
+  <output id="satelliteOpacityValue" for="satelliteOpacity">60%</output>
+  <label for="radarOpacity">Radar</label>
+  <input id="radarOpacity" type="range" min="0" max="100" value="80" aria-label="Radar opacity">
+  <output id="radarOpacityValue" for="radarOpacity">80%</output>
 </div>
 </div>
 
@@ -207,6 +229,7 @@
 <script src="src/js/radarLocation.js"></script>
 <script src="src/js/radarPlayback.js"></script>
 <script src="src/js/radarControls.js"></script>
+<script src="src/js/satellite.js"></script>
 <script src="src/js/app.js"></script>
 
 <svg

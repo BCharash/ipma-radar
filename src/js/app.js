@@ -200,6 +200,8 @@ async function initialize(){
 
   initializeMap();
 
+  initializeSatellite();
+
   initializeMinimumRainThreshold();
 
   setLoopUI(false);
@@ -222,6 +224,10 @@ async function initialize(){
   await rebuildRadar();
 }
 
+
+function refreshImagery(){
+  return Promise.all([refreshSatellite(), rebuildRadar()]);
+}
 
 // Bind controls only after all feature scripts have loaded.
 thresholdSelect.addEventListener(
@@ -247,7 +253,7 @@ thresholdSelect.addEventListener(
 
 historySelect.addEventListener(
   "change",
-  rebuildRadar
+  refreshImagery
 );
 
 
@@ -259,7 +265,7 @@ intervalSelect.addEventListener(
 
 refreshButton.addEventListener(
   "click",
-  rebuildRadar
+  refreshImagery
 );
 
 
