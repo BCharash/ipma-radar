@@ -152,10 +152,11 @@
     <option value="infrared">Infrared satellite</option>
     <option value="hybrid" selected>GeoColour satellite</option>
   </select>
-  <select id="satelliteQuality" disabled aria-label="Satellite resolution" title="High waits for a complete matching sequence">
+  <select id="satelliteQuality" disabled aria-label="Satellite resolution" title="High uses Low fallbacks for unavailable images">
     <option value="low">Low res</option>
     <option value="high">High res</option>
   </select>
+  <button id="satelliteHighRetry" type="button" hidden title="Retry unavailable High images">Retry High</button>
   <label class="radar-toggle">
     <input id="radarToggle" type="checkbox" checked>
     Rain radar

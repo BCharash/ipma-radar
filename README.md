@@ -39,9 +39,14 @@ playback. Radar and satellite frame numbers and Lisbon-local times appear side
 by side at the bottom of the map. **Low res / High res** compares the same
 observations at different image sizes. Low is the default (256-pixel maximum
 side). High prepares the entire matching movie (512 pixels on a small viewport,
-768 otherwise), showing progress while Low continues. It switches all frames
-together at the next playback boundary, or immediately while paused. An
-incomplete High batch leaves Low in use. Switching back to Low is immediate;
+768 otherwise), showing processed and ready counts while the current movie continues.
+After every request succeeds, fails or times out, it switches the prepared sequence
+at the next playback boundary, or immediately while paused. Unavailable High
+images use their matching Low frames. The persistent readout reports, for example,
+**High ready 16/19 · 3 Low fallbacks**. **Retry High** retries the missing images,
+reusing successful ones and applying recovered images at the next boundary.
+It also bypasses the temporary failed-request deferral for those images.
+Switching back to Low is immediate;
 both resolutions are cached. Beside the satellite frame count, the readout shows
 the displayed **Low/High** image and its actual decoded pixel dimensions, such as
 **Low 154×256 px**. It reports what is on screen, even if High is selected while
@@ -58,7 +63,7 @@ expanded frames within a pass. A narrower rectangle can remain visible temporari
 while loading; if any replacement is missing, previous coverage stays in use and
 Refresh retries. Initial history still loads progressively. Small movements
 within a reusable padded scene require no new coverage. Selecting High prepares
-a complete matching High batch for the new scene after Low history loads.
+a matching High/Low fallback batch for the new scene after Low history loads.
 Successful images are reused from a bounded memory cache and browser Cache
 Storage (when available), including across page reloads. Known failed requests
 are briefly deferred. The first uncached visit still depends on the provider.
@@ -76,6 +81,12 @@ uses four workers. Failed observations are skipped.
 History preparation stops after 60 seconds with partial results retained and an
 incomplete-history message; Refresh retries missing data. This is not a
 preprocessed satellite tile service and cannot guarantee instant loading.
+
+Expanded coverage and High resolution replace the movie after its current pass.
+With Loop enabled, playback continues into the replacement sequence; with Loop
+off, it stays at the final observation until Play is pressed. An unfinished
+coverage request does not force another pass, and late replacements leave paused
+playback paused.
 
 See the [prepared GeoColour feed investigation](docs/geocolour-feed-investigation.md)
 for measured delivery results and the remaining obstacles to replacing WMS.

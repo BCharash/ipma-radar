@@ -400,11 +400,11 @@ function initializeSatellite(){
   });
   satelliteQualitySelect.addEventListener("change", () => {
     if(satelliteQualitySelect.value === "low"){
+      cancelSatelliteRefinement();
       satelliteQualityActive = "low";
-      satelliteQualityPending = false;
       syncSatelliteToRadar();
     }
-    queueSatelliteRefinement();
+    queueSatelliteRefinement(true);
   });
   map.on("moveend", () => {
     syncSatelliteToRadar();

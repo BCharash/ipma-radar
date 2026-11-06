@@ -214,7 +214,50 @@ try:
         const goodLoader=loadSatelliteImage;
         loadSatelliteImage=async(url,signal)=>Date.parse(new URL(url).searchParams.get('time'))===+missing.date ? null : goodLoader(url,signal);
         satelliteQualitySelect.value='high';await refineSatelliteFrame();
-        const incompleteStaysLow=satelliteQualityActive==='low' && !satelliteQualityPending;
+        const partialWaitsForBoundary=satelliteQualityActive==='low' && satelliteQualityPending && !missing.detail;
+        playbackCursor=playbackTimeline.length-1;await sleep(220);
+        displayPlaybackTime(+missing.date);
+        const missingUsesLow=satelliteQualityActive==='high' && satelliteLayer===missing.overlay;
+        const fallbackReported=document.getElementById('satelliteFrameCounter').textContent.includes('1 Low fallbacks') &&
+          !satelliteHighRetry.hidden;
+        let otherFramesUseHigh=true;
+        for(const frame of satelliteFrames.filter(frame=>frame!==missing)){
+          displayPlaybackTime(+frame.date);otherFramesUseHigh=otherFramesUseHigh && satelliteLayer===frame.detail.overlay;
+        }
+        const persistentCount=document.getElementById('satelliteFrameCounter').textContent.includes(
+          'High ready '+(satelliteFrames.length-1)+'/'+satelliteFrames.length);
+        queueSatelliteRefinement();
+        const noAutomaticRetry=satelliteDetailTimer===null && !satelliteDetailRequest;
+        loadSatelliteImage=goodLoader;
+        let releaseRetry;
+        const retryGate=new Promise(resolve=>{releaseRetry=resolve});
+        loadSatelliteImage=async(url,signal)=>{await retryGate;return goodLoader(url,signal)};
+        const retryURL=satelliteImageURL(SATELLITE_PRODUCTS[missing.product],missing.date,satelliteGeometry());
+        satelliteFailedUntil.set(retryURL,Date.now()+45000);
+        satelliteHighRetry.click();clearTimeout(satelliteDetailTimer);satelliteDetailTimer=null;
+        const explicitRetryClearsFailure=!satelliteFailedUntil.has(retryURL);
+        const retry=refineSatelliteFrame();await sleep(10);
+        const retryStartsAtZero=document.getElementById('satelliteFrameCounter').textContent.includes('processed');
+        releaseRetry();await retry;
+        displayPlaybackTime(+missing.date);
+        const retryHeldUntilBoundary=satelliteLayer===missing.overlay && !missing.detail && satelliteQualityPending;
+        playbackCursor=playbackTimeline.length-1;await sleep(220);
+        displayPlaybackTime(+missing.date);
+        const retryUpgradesAtBoundary=satelliteLayer===missing.detail.overlay && satelliteHighRetry.hidden &&
+          document.getElementById('satelliteFrameCounter').textContent.includes('0 Low fallbacks');
+        satelliteQualitySelect.value='low';satelliteQualitySelect.dispatchEvent(new Event('change'));
+        const retainedDetails=satelliteFrames.map(frame=>frame.detail);
+        for(const frame of satelliteFrames)delete frame.detail;
+        const staleOverlay=L.imageOverlay(source,missing.geometry.bounds,{pane:'satellitePane',opacity:0}).addTo(map);
+        missing.detail={geometry:{...missing.geometry,bbox:missing.geometry.bbox.map(n=>n+1)},overlay:staleOverlay};
+        loadSatelliteImage=async()=>null;
+        satelliteQualitySelect.value='high';await refineSatelliteFrame();
+        playbackCursor=playbackTimeline.length-1;await sleep(220);
+        const allFailedUsesLow=satelliteQualityActive==='high' && satelliteHighProgress.finished &&
+          satelliteHighProgress.processed===satelliteFrames.length && satelliteHighProgress.ready===0 &&
+          !satelliteQualityPending && satelliteFrames.every(frame=>!frame.detail) && !map.hasLayer(staleOverlay);
+        satelliteQualitySelect.value='low';satelliteQualitySelect.dispatchEvent(new Event('change'));
+        satelliteFrames.forEach((frame,i)=>{frame.detail=retainedDetails[i]});
         loadSatelliteImage=goodLoader;
         const priorBounds=satelliteFrames[0].geometry.bounds;
         const oldMovie=satelliteFrames.slice();
@@ -268,7 +311,7 @@ try:
         const radar=document.getElementById('radarFrameCounter'),sat=document.getElementById('satelliteFrameCounter');
         const sideBySide=Math.abs(radar.getBoundingClientRect().top-sat.getBoundingClientRect().top)<2 && radar.getBoundingClientRect().right<=sat.getBoundingClientRect().left;
         return {newestFirst,playableWhileLoading,repeatsWhileLoading,togglesContinue,arrivalsKeepClock,historyAdopted,
-          lowUntilComplete,lateHighRespectsLow,waitsForBoundary,allHigh,highReadout,uniformHigh,lowInstant,lowReadout,highReuse,incompleteStaysLow,coverageKeepsClock,keepsWholeMovie,waitsForCoverageBoundary,expanded,zoomNewestFirst,failedCoverageRetainsMovie,pausedCoverageCommits,initialHistorySurvivesReframe,
+          lowUntilComplete,lateHighRespectsLow,waitsForBoundary,allHigh,highReadout,uniformHigh,lowInstant,lowReadout,highReuse,partialWaitsForBoundary,missingUsesLow,fallbackReported,otherFramesUseHigh,persistentCount,noAutomaticRetry,explicitRetryClearsFailure,allFailedUsesLow,retryStartsAtZero,retryHeldUntilBoundary,retryUpgradesAtBoundary,coverageKeepsClock,keepsWholeMovie,waitsForCoverageBoundary,expanded,zoomNewestFirst,failedCoverageRetainsMovie,pausedCoverageCommits,initialHistorySurvivesReframe,
           registered:registrationError<2,noFutureFrames,sideBySide,errors:testErrors};
       }finally{
         releaseHistory();releaseHigh();releaseCoverage();stopPlayback(false);cancelSatelliteRefinement();
@@ -277,6 +320,67 @@ try:
       }
     })()""")
     print('PROGRESSIVE_PLAYBACK',result,flush=True)
+    assert all(value for key,value in result.items() if key!='errors') and not result['errors'],result
+    result=c.evaluate("""(async()=>{
+      stopPlayback(false);cancelSatelliteRefinement();
+      const savedFrames=satelliteFrames,savedDates=satelliteRequestedDates;
+      const savedQuality=satelliteQualitySelect.value;
+      const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+      const results={};
+      const image=document.createElement('canvas');image.width=2;image.height=2;
+      const source=image.toDataURL();
+      const makeFrame=frame=>({...frame,detail:undefined,overlay:L.imageOverlay(source,frame.geometry.bounds,
+        {pane:'satellitePane',opacity:0,interactive:false}).addTo(map)});
+      try{
+        setRadarVisible(false);
+        for(const kind of ['coverage','quality'])for(const loop of [false,true]){
+          satelliteFrames=savedFrames.slice(-3).map(makeFrame);
+          satelliteRequestedDates=satelliteFrames.map(frame=>frame.date);
+          satelliteQualitySelect.value='low';satelliteQualityActive='low';
+          satelliteLoading=false;setLoopUI(loop);startPlayback();
+          const original=satelliteFrames.slice(),clock=JSON.stringify(playbackTimeline);
+          // Complete a replacement halfway through the pass, without moving its clock.
+          await sleep(PLAYBACK_DELAY+25);
+          if(kind==='coverage') satelliteCoveragePending={generation:satelliteGeneration,
+            product:satelliteSelect.value,frames:original.map(makeFrame),stepMs:satelliteStepMs};
+          else{
+            satelliteQualitySelect.value='high';
+            for(const frame of original)frame.detail={geometry:frame.geometry,overlay:makeFrame(frame).overlay};
+            satelliteQualityPending=true;
+          }
+          const held=playing && JSON.stringify(playbackTimeline)===clock &&
+            satelliteFrames.every((frame,i)=>frame===original[i]) && satelliteQualityActive==='low';
+          await sleep(PLAYBACK_DELAY*2);
+          const committed=kind==='coverage' ? satelliteFrames.every(frame=>!original.includes(frame)) : satelliteQualityActive==='high';
+          results[kind+(loop?'Loop':'Once')]=held && committed && (loop ?
+            playing && playbackCursor===0 && playbackTime===+satelliteFrames[0].date :
+            !playing && playbackTime===+satelliteFrames[satelliteFrames.length-1].date);
+          stopPlayback(false);cancelSatelliteRefinement();
+          for(const frame of satelliteFrames){frame.overlay.remove();frame.detail?.overlay.remove();}
+        }
+        // An unfinished expanded view must not force a one-shot movie to repeat.
+        satelliteFrames=savedFrames.slice(-3).map(makeFrame);
+        satelliteRequestedDates=satelliteFrames.map(frame=>frame.date);
+        satelliteQualitySelect.value='low';satelliteQualityActive='low';setLoopUI(false);
+        startPlayback();satelliteLoading=true;
+        await sleep(PLAYBACK_DELAY*3+25);
+        results.unreadyCoverageFinishesOnce=!playing && playbackTime===+satelliteFrames.at(-1).date;
+        satelliteLoading=false;
+        satelliteCoveragePending={generation:satelliteGeneration,product:satelliteSelect.value,
+          frames:satelliteFrames.map(makeFrame),stepMs:satelliteStepMs};
+        commitSatelliteCoverage();
+        results.lateCoverageWaitsForPlay=!playing && playbackTimer===null;
+        startPlayback();results.playUsesReplacement=playing && playbackTime===+satelliteFrames[0].date;
+        return {...results,errors:testErrors};
+      }finally{
+        satelliteLoading=false;stopPlayback(false);cancelSatelliteRefinement();
+        for(const frame of satelliteFrames){frame.overlay.remove();frame.detail?.overlay.remove();}
+        satelliteFrames=savedFrames;satelliteRequestedDates=savedDates;
+        satelliteQualitySelect.value=savedQuality;satelliteQualityActive='low';
+        setLoopUI(false);setRadarVisible(true);displayPlaybackTime(+savedFrames.at(-1).date);
+      }
+    })()""")
+    print('REPLACEMENT_PLAYBACK_BOUNDARIES',result,flush=True)
     assert all(value for key,value in result.items() if key!='errors') and not result['errors'],result
     result=c.evaluate("""(async()=>{
       cancelSatelliteRefinement();

@@ -1363,6 +1363,43 @@ terms remain unverified. Production therefore retains EUMETView. Full evidence,
 timings and source links are in the
 [prepared-feed investigation](geocolour-feed-investigation.md).
 
+## Playback handoff after coverage and quality preparation
+
+Separated initial history growth from replacement loading at the end of a
+play-through. An expanded-view request no longer forces an extra pass with Loop
+off. Coverage and High batches commit after the last observation: Loop starts
+the replacement movie, while one-shot playback remains paused at the final time.
+If preparation completes after playback has stopped, it leaves playback paused.
+The High-ready status now describes switching after the pass, including when
+Loop is off.
+
+Validation: the quick Chrome suite passed with explicit coverage/High checks
+for Loop on and off, an unfinished coverage request at the end of a one-shot
+movie, late completion remaining paused, and a subsequent Play using the
+replacement. Existing progressive history, cache, registration and fallback
+checks also passed with no JavaScript errors.
+
+## High-resolution fallbacks and persistent preparation counts
+
+High preparation now finishes when every request has resolved or timed out,
+using the matching Low observation wherever High is unavailable. The prepared
+movie still commits between passes (or while paused) and follows the existing
+Loop behavior. Successful retry images are staged separately so they cannot
+change sharpness midway through a pass. Stale High images with different bounds
+are removed at commit rather than used as fallbacks.
+
+The satellite readout retains processed/ready counts during preparation and
+the final High-ready/Low-fallback totals afterward, alongside actual displayed
+quality and dimensions. A Retry High button appears for missing High images;
+it reuses successful details and bypasses temporary failed-request deferral for
+the missing ones. A finished partial batch does not retry automatically at every
+playback boundary. Low selection cancels outstanding High preparation.
+
+Validation covers mixed quality at matching observation times, persistent
+counts, retry staging and boundary upgrades, explicit retry through failure
+deferral, and the all-High-unavailable case, alongside the existing playback,
+coverage, registration and cache checks.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite

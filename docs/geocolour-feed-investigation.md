@@ -107,6 +107,67 @@ uninterrupted playback when toggling radar, registration, map restoration and
 WebGL fallback. No JavaScript errors were reported. Physical Safari/iPhone
 performance remains unmeasured.
 
+## Follow-up: four, six and all nineteen requests
+
+On 6 November 2026, an isolated Chrome session requested the same 19 Low
+GeoColour frames (latest 16:50 UTC), fixed EPSG:3857 bounds and 136 × 256 output
+dimensions. Browser fetch caching was disabled with `cache: no-store`.
+The order was 4, 6, 19, 19, 6, 4 to expose warm-cache/order effects.
+
+| Concurrent requests | First run elapsed | Second run elapsed | Successful PNGs |
+| --- | --- | --- | --- |
+| 4 | 6.34 seconds | 15.02 seconds | 19/19, 18/19 |
+| 6 | 9.88 seconds | 15.83 seconds | 19/19, 19/19 |
+| 19 (whole sequence) | 11.45 seconds | 12.84 seconds | 19/19, 18/19 |
+
+The first two successful images arrived in 1.03–1.83 seconds with four workers,
+1.17–1.67 seconds with six, and 1.06–1.37 seconds with nineteen. PNG decode/render
+time was not included. The browser/provider still controls effective transport
+parallelism; these are application worker counts.
+
+The failed response in the later four- and nineteen-worker runs was HTTP 500
+for the same observation. This does not establish concurrency as its cause.
+Elapsed times include those failed responses, so an 18/19 run is not a fully
+loaded sequence. Strong service variability limits conclusions from two trials
+per setting. Neither six nor nineteen demonstrated a reliable overall advantage
+over four; the production limit remains four. These are fixed-view Low results,
+not measurements of High or physical iPhone performance.
+
+## Follow-up: Low versus High request-to-ready time
+
+Measured 6 November 2026 against the same 19 observations (latest 17:00 UTC),
+same fixed bounds as the concurrency test, four workers, and browser fetch cache
+disabled. Each image was fetched completely and decoded with `Image.decode()`.
+Order: Low, phone High, desktop High, desktop High, phone High, Low. The labels
+describe the app's requested sizes, not measurements on physical phones.
+
+| Requested pixels | Median request-to-decoded image, each run | Batch elapsed, each run | Successful images |
+| --- | --- | --- | --- |
+| Low 136 × 256 | 1.52 / 1.51 seconds | 9.20 / 9.19 seconds | 19/19, 19/19 |
+| Phone High 271 × 512 | 4.95 / 5.19 seconds | 26.89 / 27.40 seconds | 18/19, 19/19 |
+| Desktop High 407 × 768 | 11.68 / 11.56 seconds | 59.10 / 62.96 seconds | 17/19, 16/19 |
+
+Per-image medians include only successful images and start when a worker sends
+the request, excluding time queued behind other images. Batch elapsed includes
+queueing and failed requests. HTTP 500 responses and 20-second timeouts occurred;
+an incomplete batch is not a successful High switch. These timing samples do not
+guarantee the same performance for other areas, observations, connections or
+provider load, and bypass app caches rather than the provider's internal caches.
+
+Typical compressed sizes were about 74 KiB, 272 KiB and 570 KiB respectively.
+Median decoding took only 3–4, 7 and 11 milliseconds. Response headers typically
+arrived well before the complete body: median header times were 0.24–0.59 seconds
+for Low, 0.51–0.68 for phone High, and 0.35–1.24 for desktop High. Most measured
+request-to-ready time was spent awaiting the image body, not decoding it. This
+does not distinguish network throughput from upstream image streaming or service
+limits, and does not identify EUMETSAT's internal bottleneck.
+
+Low can begin playback once two observations are ready (0.86–1.90 seconds in
+these samples). High waits for the complete matching movie and, when playing,
+the current pass boundary. The measurements above exclude that extra boundary
+wait and the app's 400 ms High preparation debounce. A cached High movie avoids
+these network transfers. Production settings were unchanged by this test.
+
 ## Decision
 
 Prepared delivery remains promising, but a replacement must provide recent

@@ -322,7 +322,7 @@ select{
   pointer-events:none;
   white-space:nowrap;
   display:none;
-  align-items:center;
+  align-items:flex-start;
   gap:10px;
   max-width:calc(100% - 16px);
   font-variant-numeric:tabular-nums
@@ -398,3 +398,5 @@ select{
   padding:5px 9px; border-radius:5px; background:rgba(255,255,255,.95);
   box-shadow:0 1px 5px #0003; font-size:12px; color:#465c68;
 }
+
+.satellite-high-progress{display:block;margin-top:2px}

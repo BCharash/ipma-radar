@@ -84,12 +84,16 @@ function scheduleNextFrame(){
     if(!playing) return;
     playbackCursor++;
     if(playbackCursor >= playbackTimeline.length){
-      commitSatelliteCoverage();
-      commitSatelliteQuality();
       const availableTimes = availablePlaybackFrames().map(frame => frame.date.getTime());
       const historyExtended = availableTimes.some(time => !playbackTimeline.includes(time));
-      if(looping || satelliteLoading || historyExtended){
-        playbackTimeline = availableTimes;
+      // Initial history may grow while it loads. Reframing the same observations
+      // or preparing High is a replacement, and must respect the Loop control.
+      const historyGrowing = satelliteLoading && satelliteRequestedDates.some(date =>
+        !satelliteFrames.some(frame => +frame.date === +date));
+      if(looping || historyGrowing || historyExtended){
+        commitSatelliteCoverage();
+        commitSatelliteQuality();
+        playbackTimeline = availablePlaybackFrames().map(frame => frame.date.getTime());
         playbackSatelliteTimes = new Set(satelliteFrames.map(frame => frame.date.getTime()));
         playbackCursor = 0;
       }

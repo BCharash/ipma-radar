@@ -111,6 +111,19 @@ function updateFrameCounter(){
     satelliteReadout.textContent = "Satellite " + (index < 0 ? "—" : index+1) + "/" + satelliteFrames.length + resolution +
       (index < 0 ? "" : " · " + clock(satelliteFrames[index].date));
   }
+  const progress=satelliteHighProgress;
+  const showHigh=satelliteQualitySelect.value==="high" && !satelliteReadout.hidden && progress;
+  if(showHigh){
+    const line=document.createElement("span");
+    line.className="satellite-high-progress";
+    line.textContent=progress.finished
+      ? "High ready " + progress.ready + "/" + progress.frames.length + " · " +
+        (progress.frames.length-progress.ready) + " Low fallbacks" + (satelliteQualityPending ? " · queued" : "")
+      : progress.processed + "/" + progress.frames.length + " processed · " + progress.ready + " High ready";
+    satelliteReadout.appendChild(line);
+  }
+  satelliteHighRetry.hidden=!(showHigh && progress.finished && progress.ready<progress.frames.length);
+  satelliteHighRetry.disabled=!!satelliteDetailRequest || satelliteLoading || !!satelliteCoveragePending;
   frameCounter.style.display = radarReadout.hidden && satelliteReadout.hidden ? "none" : "flex";
 }
 
