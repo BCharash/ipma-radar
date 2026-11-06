@@ -6,6 +6,32 @@ integration into PraiasPortugal.
 Open `index.html` with Live Server to run the radar. `location-test.html` is a
 separate geolocation diagnostic page; opening it runs only the location test.
 
+## Project structure
+
+```text
+ipma-radar/
+├── index.html
+├── location-test.html
+├── manifest.json
+├── README.md
+├── assets/images/       App icons and favicon
+│   └── source/         Original artwork and alternate icon
+├── docs/
+│   ├── design-journal.md
+│   └── archive/        Earlier integration handoffs
+└── src/
+    ├── css/
+    └── js/
+```
+
+The [design journal](docs/design-journal.md) carries forward the existing v3
+integration handoff's technical decisions, investigation history, and integration
+requirements, followed by dated changes and validation checkpoints.
+Earlier integration handoffs are preserved as historical
+references: [v3](docs/archive/IPMA_Radar_Integration_Summary_v3.md) and
+[v2](docs/archive/IPMA_Radar_Integration_Summary_v2.md). Use this README for the
+current file layout.
+
 ## File guide
 
 | File | Responsibility |

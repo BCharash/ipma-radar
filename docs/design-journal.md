@@ -1,16 +1,29 @@
-# IPMA Radar — Integration Handoff / Technical Summary
+# IPMA Radar — Design journal
 
-## Purpose
+This is the maintained technical design record for the standalone IPMA radar
+and its eventual integration into Praias de Portugal. It is based on the existing
+[integration handoff v3](archive/IPMA_Radar_Integration_Summary_v3.md), which
+extends [v2](archive/IPMA_Radar_Integration_Summary_v2.md). Its technical decisions,
+investigation findings, rejected approaches, and integration requirements are
+retained below; subsequent changes are recorded in dated entries afterward.
 
-This document is the current handoff for incorporating the standalone **IPMA Radar** into **Praias de Portugal**.
+The [README](../README.md) provides the current file map and launch instructions.
+The archived handoffs retain their original bodies for historical comparison.
 
-It supersedes the earlier investigation handoff dated 27 August 2026. The earlier document contains valuable investigation history, but some of its implementation details were subsequently changed. This document describes the **current known-good implementation** and also preserves the most important lessons from the investigation.
+The inherited investigation predates this journal; its individual experiments
+are not assigned new dates. Statements about IPMA's website, CORS behavior, and
+prior visual/device testing record the handoff's findings, rather than new
+external checks performed during the November refactor. The dated entries
+separate recent verification from that inherited evidence.
 
-The central technical conclusion remains: use IPMA's actual timestamped radar PNGs and register them with the exact geographic bounds used by IPMA's own Leaflet implementation.
+## Design foundation — inherited investigation and decisions
 
----
+The central decision is to use IPMA's actual timestamped radar PNGs with the
+exact geographic bounds found in IPMA's own Leaflet implementation. The
+following sections preserve the reasoning and implementation constraints that
+established that baseline. File paths have been updated for the current layout.
 
-# 1. Current application
+### Standalone application baseline
 
 The standalone app currently provides:
 
@@ -26,6 +39,8 @@ The standalone app currently provides:
 - Manual Refresh button.
 - Explicit “Radar is current” feedback when Refresh finds no newer image.
 - Frame counter showing frame number and Lisbon local time.
+- Loop playback toggle.
+- Optional radar range overlay (three 120 km circles).
 - PWA manifest and iPhone home-screen icon support.
 - Favicon.
 - Vertical precipitation-intensity legend.
@@ -36,9 +51,9 @@ The standalone version should be regarded as the **known-good reference implemen
 
 ---
 
-# 2. The most important architectural decision: obtain the actual IPMA PNGs directly
+### The most important architectural decision: obtain the actual IPMA PNGs directly
 
-## Do NOT depend on `imgs-radar.json`
+#### Do NOT depend on `imgs-radar.json`
 
 During development, the IPMA JSON endpoint used to enumerate radar images proved unsuitable because the endpoint is CORS-blocked when requested from the app's local/GitHub Pages origin.
 
@@ -72,7 +87,7 @@ No API key is required merely to retrieve these public radar PNG resources.
 
 ---
 
-# 3. Finding the newest actual image
+### Finding the newest actual image
 
 Radar imagery is produced on a five-minute grid, but the image for the nominal current timestamp may not yet have been published.
 
@@ -94,7 +109,7 @@ This is important.
 
 ---
 
-# 4. Authoritative radar geographic registration
+### Authoritative radar geographic registration
 
 This was the most important discovery in the entire investigation.
 
@@ -126,7 +141,7 @@ That means:
         latitude  43.792862
         longitude -4.345465
 
-## These values are authoritative, not estimated.
+#### These values are authoritative, not estimated.
 
 They were extracted from the code IPMA itself uses to construct its radar `ImageOverlay`.
 
@@ -149,7 +164,7 @@ This is much stronger evidence than trying to infer the image registration from:
 
 ---
 
-# 5. Why the earlier registration was wrong
+### Why the earlier registration was wrong
 
 An earlier implementation used approximately:
 
@@ -164,11 +179,11 @@ This was not merely a map viewport problem.
 
 There are two completely different concepts:
 
-### Map extent / viewport
+##### Map extent / viewport
 
 Controls what portion of the geographic map the user sees.
 
-### ImageOverlay bounds
+##### ImageOverlay bounds
 
 Determine where the radar PNG's pixels are geographically located.
 
@@ -178,7 +193,7 @@ Changing the map center or zoom cannot correct an incorrectly registered radar o
 
 ---
 
-# 6. Independent confirmation from IPMA's map settings
+### Independent confirmation from IPMA's map settings
 
 IPMA's own map initialization independently reinforces the same geographic footprint.
 
@@ -204,7 +219,7 @@ This provides an independent validation of the `RADAR_BOUNDS` discovery.
 
 ---
 
-# 7. Radar image dimensions and what they do — and do not — tell us
+### Radar image dimensions and what they do — and do not — tell us
 
 IPMA radar PNGs have been observed at:
 
@@ -229,7 +244,7 @@ Do not use them to calculate or alter radar bounds.
 
 ---
 
-# 8. Frame construction and rolling history
+### Frame construction and rolling history
 
 The app constructs frames from timestamped filenames rather than treating frame numbers as permanent identifiers.
 
@@ -265,7 +280,7 @@ Browser HTTP caching is separate from the application's frame list and should no
 
 ---
 
-# 9. Current playback architecture
+### Current playback architecture
 
 The current implementation evolved beyond an earlier approach that tried to reuse a single overlay by changing its URL.
 
@@ -283,7 +298,7 @@ This gives smooth playback because the animation is not waiting for network requ
 
 The current playback delay is approximately 180 ms per frame.
 
-### Important correction to the old handoff
+##### Important correction to the old handoff
 
 The earlier investigation document described an implementation using one overlay whose URL was changed with `radarLayer.setUrl(frame.url)`. That is **not the current implementation**.
 
@@ -291,7 +306,7 @@ For future work, treat the current preloaded multi-overlay implementation as the
 
 ---
 
-# 10. Refresh architecture
+### Refresh architecture
 
 The Refresh button calls the existing:
 
@@ -320,7 +335,7 @@ This gives useful feedback on iPhone/Safari where the button's pressed state alo
 
 ---
 
-# 11. Loading/performance architecture
+### Loading/performance architecture
 
 An important lesson from the earlier investigation is that radar history loading and playback are different problems.
 
@@ -338,7 +353,7 @@ Do not revert to downloading frames one at a time during animation.
 
 ---
 
-# 12. Time handling
+### Time handling
 
 IPMA filenames contain UTC timestamps.
 
@@ -359,7 +374,7 @@ Do not hard-code a permanent one-hour offset.
 
 ---
 
-# 13. Intensity legend
+### Intensity legend
 
 The app now includes a compact vertical precipitation-intensity legend in the lower-left of the map.
 
@@ -394,7 +409,7 @@ The legend is deliberately numerical as well as chromatic. This makes the radar 
 
 The legend background is intentionally translucent rather than opaque so that it remains unobtrusive over the map.
 
-# 16. Minimum-rain display filter
+### Minimum-rain display filter
 
 The standalone radar includes a deliberately limited **Minimum** selector in the legend.
 
@@ -405,7 +420,7 @@ The current choices are:
 
 The selector previously included 1 and 2 mm/h experimental filters. Those options were removed because the rendered IPMA PNG does not provide sufficiently reliable browser-side pixel classification for those thresholds.
 
-### Important implementation note
+##### Important implementation note
 
 The 0.5 mm/h setting has been retained because visual testing showed that it successfully removes the weakest blue returns while preserving the stronger radar returns.
 
@@ -423,7 +438,7 @@ The numerical legend itself continues to show the complete IPMA scale. The selec
 
 ---
 
-# 17. Radar range overlay
+### Radar range overlay
 
 The standalone radar also includes an optional **Radar range** map control.
 
@@ -455,7 +470,7 @@ The range overlay is informational. It does not clip or otherwise alter the rada
 
 The 120 km distance is particularly relevant because IPMA notes that at distances greater than approximately 120 km from a radar, the observed radar quantity can become less representative of conditions near the surface.
 
-### Integration requirement
+##### Integration requirement
 
 The range circles must be implemented as a separate Leaflet layer. They must **not** be incorporated into `RADAR_BOUNDS` or used to modify the radar image registration.
 
@@ -470,9 +485,7 @@ const RADAR_BOUNDS = [
 
 ---
 
----
-
-# 14. Map viewport versus radar registration
+### Map viewport versus radar registration
 
 The application should maintain the distinction between:
 
@@ -495,7 +508,7 @@ When integrated into Praias de Portugal, the beach app can use its own preferred
 
 ---
 
-# 15. Original investigation lesson: make sure debugging is happening in the correct page
+### Original investigation lesson: make sure debugging is happening in the correct page
 
 A major source of confusion during development was accidentally running browser-console commands against the real IPMA webpage rather than the local application.
 
@@ -518,7 +531,7 @@ This is worth retaining in the integration documentation because it caused subst
 
 ---
 
-# 18. Repository and hosting
+### Repository and hosting
 
 The standalone project repository is:
 
@@ -536,16 +549,16 @@ The standalone project should remain available as a reference while the radar is
 
 ---
 
-# 19. PWA / browser assets
+### PWA / browser assets
 
 The standalone app includes:
 
     index.html
     manifest.json
-    icon-192.png
-    icon-512.png
-    apple-touch-icon.png
-    favicon.png
+    assets/images/icon-192.png
+    assets/images/icon-512.png
+    assets/images/apple-touch-icon.png
+    assets/images/favicon.png
 
 `index.html` includes the manifest, Apple touch icon, and favicon references.
 
@@ -553,7 +566,7 @@ This is relevant when moving the radar into the larger application: the radar it
 
 ---
 
-# 20. Things deliberately excluded
+### Things deliberately excluded
 
 Satellite imagery was investigated earlier but was explicitly excluded.
 
@@ -563,11 +576,11 @@ The radar component should remain focused on the IPMA precipitation product.
 
 ---
 
-# 21. What should be carried into Praias de Portugal
+### What should be carried into Praias de Portugal
 
 Treat the following as the radar core:
 
-### Acquisition
+##### Acquisition
 
 - Direct IPMA PNG URLs.
 - Timestamp-based filename construction.
@@ -575,21 +588,21 @@ Treat the following as the radar core:
 - Latest-actually-available search.
 - 30-minute backward search window.
 
-### Geographic registration
+##### Geographic registration
 
     const RADAR_BOUNDS = [
       [34.011513, -12.454795],
       [43.792862, -4.345465]
     ];
 
-### Frame management
+##### Frame management
 
 - History selection.
 - Interval selection.
 - Timestamp-based frame identity.
 - Rolling history.
 
-### Loading and playback
+##### Loading and playback
 
 - Preloading.
 - Image decoding.
@@ -597,7 +610,7 @@ Treat the following as the radar core:
 - Leaflet ImageOverlays.
 - Smooth playback using already-loaded frames.
 
-### User controls
+##### User controls
 
 - Previous.
 - Play/Pause.
@@ -606,20 +619,20 @@ Treat the following as the radar core:
 - Minimum radar display threshold (0.1 / 0.5 mm/h).
 - Radar range toggle (three 120 km radar circles).
 
-### User feedback
+##### User feedback
 
 - Loading status.
 - “Radar is current”.
 - Frame number.
 - Lisbon-local timestamp.
 
-### Accessibility / interpretation
+##### Accessibility / interpretation
 
 - Numerical IPMA precipitation-intensity legend.
 
 ---
 
-# 22. Things NOT to regress
+### Things NOT to regress
 
 Do not:
 
@@ -644,12 +657,12 @@ Do not:
 
 ---
 
-# 23. Integration strategy
+### Integration strategy
 
 The safest approach is:
 
 1. Preserve the standalone radar as a known-good reference.
-2. Identify the radar-specific functions and constants in the standalone `index.html`.
+2. Use the separated radar scripts in `src/js/`, styles in `src/css/radar.css`, and markup in `index.html` as the integration source.
 3. Integrate those pieces into the Praias de Portugal map architecture.
 4. Preserve `RADAR_BOUNDS` unchanged.
 5. Preserve direct IPMA PNG acquisition unchanged.
@@ -662,7 +675,7 @@ Do not simultaneously change acquisition, geographic registration, playback, and
 
 ---
 
-# 24. Testing checklist for the integrated version
+### Testing checklist for the integrated version
 
 Test on desktop and on the real iPhone/Safari environment:
 
@@ -677,6 +690,9 @@ Test on desktop and on the real iPhone/Safari environment:
 - Previous;
 - Next;
 - Play/Pause;
+- loop on/off and end-of-sequence behavior;
+- minimum-rain filter selection and persistence;
+- radar range toggle and separate-layer behavior;
 - replay after loading;
 - Refresh when a newer image exists;
 - Refresh when the radar is already current;
@@ -692,7 +708,7 @@ The integrated app should be compared against the standalone known-good radar wh
 
 ---
 
-# 25. Recommended future refinement
+### Recommended future refinement
 
 The earlier investigation considered reducing the history to approximately four hours at 10-minute intervals, giving roughly 25 frames.
 
@@ -706,7 +722,7 @@ If a longer history or different default is desired in Praias de Portugal, make 
 
 ---
 
-# 26. Central insight to preserve
+### Central insight to preserve
 
 The most important conclusion of the entire investigation is:
 
@@ -723,7 +739,7 @@ The current implementation is therefore based on IPMA's own acquisition and regi
 
 ---
 
-# 27. Final handoff summary
+### Baseline technical summary
 
 The standalone radar is now a good, stable reference implementation.
 
@@ -743,3 +759,67 @@ Its strongest technical properties are:
 When integrating into Praias de Portugal, preserve these decisions first. UI integration and further optimization should come afterward.
 
 The standalone application should remain the baseline against which the integrated radar is checked.
+
+---
+
+## 6 November 2026 — Extract CSS and JavaScript
+
+The radar initially kept its markup, CSS, and application JavaScript together
+in the root `index.html`. Extracted styles into `src/css/radar.css` and behavior
+into `src/js/app.js`, matching PraiasPortugal's `src/css` and `src/js` layout.
+The extraction preserved the embedded contents byte for byte and retained
+Leaflet's load order. `location-test.html` remained an independent diagnostic.
+
+Validation: source reconstruction and asset-path checks passed. The user
+subsequently confirmed that the extracted application worked in their browser.
+
+## 6 November 2026 — Separate JavaScript responsibilities
+
+Split the application into ordinary scripts for IPMA frame/image services,
+Leaflet rendering, location, playback, display controls, and application
+coordination. This follows PraiasPortugal's existing script-loading approach
+without introducing a framework or build step. `app.js` loads last and starts
+the application after the feature scripts are available.
+
+All 31 original function bodies and executable source lines were retained.
+Shared page scope remains a deliberate intermediate state; file separation
+alone does not provide a mountable radar component. The controller owns the
+timeline and load generation, while feature scripts own their respective state.
+
+Validation: the original and split versions passed the same JavaScriptCore
+checks with simulated browser and Leaflet APIs. These covered startup, loading,
+caching, playback, looping, refresh, history/interval changes, thresholds, range
+controls, superseded loads, and location/radar failures. Actual browser and
+iPhone rendering after this split still need confirmation.
+
+## 6 November 2026 — Organize root assets and documentation
+
+Moved runtime icons and the favicon to `assets/images/`. Moved original artwork
+and the alternate touch icon to `assets/images/source/`, preserving the files
+and their names. Updated the page and manifest references to the runtime icons.
+
+Kept `index.html`, `location-test.html`, and `manifest.json` at the root to retain
+the existing page URLs and manifest start URL. Kept the README at the root as
+the entry point to the project documentation.
+
+Preserved both earlier integration summaries in `docs/archive/` with visible
+historical-status notices. The v3 integration handoff supplies the technical
+foundation of this journal, including the earlier investigation, rejected
+approaches, operating constraints, and integration checklist. The README remains
+the current file guide. No image assets were deleted.
+
+Validation: moved image contents were checked for exact preservation. Static
+checks verified local HTML assets, manifest icons, documentation links, and
+unchanged application JavaScript/CSS. Browser and installed-PWA icon checks
+remain to be performed after the path changes.
+
+## Remaining integration work
+
+- Confirm browser and iPhone behavior after the script split and asset moves.
+- Agree on the user's requested radar improvements before implementing them.
+- Scope radar CSS to a feature container before combining pages.
+- Encapsulate radar state and expose initialization, resize, and cleanup methods.
+- Receive beach selection and coordinates from PraiasPortugal's existing data.
+- Coordinate refresh and navigation with the host application lifecycle.
+
+These are future steps, not changes completed by the file reorganization.

@@ -1,3 +1,9 @@
+> **Historical handoff — archived 6 November 2026.** This document predates
+> the JavaScript/CSS extraction and root-directory cleanup. Its embedded
+> file layout and descriptions of current implementation may be outdated.
+> See the [current file guide](../../README.md) and
+> [design journal](../design-journal.md) for the maintained structure and decisions.
+
 # IPMA Radar — Integration Handoff / Technical Summary
 
 ## Purpose
@@ -29,7 +35,7 @@ The standalone app currently provides:
 - PWA manifest and iPhone home-screen icon support.
 - Favicon.
 - Vertical precipitation-intensity legend.
-- IPMA precipitation-rate thresholds in the legend.
+- Complete IPMA precipitation-rate scale in the legend, with a separate 0.1/0.5 mm/h minimum-display control.
 - Public GitHub/GitHub Pages deployment as the intended hosting model.
 
 The standalone version should be regarded as the **known-good reference implementation** during integration.
@@ -394,6 +400,82 @@ The legend is deliberately numerical as well as chromatic. This makes the radar 
 
 The legend background is intentionally translucent rather than opaque so that it remains unobtrusive over the map.
 
+# 16. Minimum-rain display filter
+
+The standalone radar includes a deliberately limited **Minimum** selector in the legend.
+
+The current choices are:
+
+- **0.1 mm/h** — show the complete IPMA radar image.
+- **0.5 mm/h** — suppress the weakest radar returns below the lowest useful displayed level.
+
+The selector previously included 1 and 2 mm/h experimental filters. Those options were removed because the rendered IPMA PNG does not provide sufficiently reliable browser-side pixel classification for those thresholds.
+
+### Important implementation note
+
+The 0.5 mm/h setting has been retained because visual testing showed that it successfully removes the weakest blue returns while preserving the stronger radar returns.
+
+This should be regarded as a **visual display filter**, not as a numerical reconstruction of the underlying IPMA rainfall field.
+
+The filter should:
+
+- preserve the original IPMA radar colors;
+- make qualifying low-intensity pixels transparent rather than recoloring them;
+- preserve the normal radar overlay opacity;
+- persist the user's 0.1/0.5 selection using `localStorage`;
+- default to 0.1 mm/h.
+
+The numerical legend itself continues to show the complete IPMA scale. The selector is **not** intended to duplicate that scale; it is simply a practical visual cleanup control.
+
+---
+
+# 17. Radar range overlay
+
+The standalone radar also includes an optional **Radar range** map control.
+
+When enabled, it displays three **120 km radius circles**, corresponding to the approximate radar coverage range around the three mainland IPMA radar sites:
+
+```javascript
+const RADAR_SITES = [
+  { name:"Arouca",  lat:40.84502, lon:-8.27972 },
+  { name:"Coruche", lat:39.07137, lon:-8.40011 },
+  { name:"Loulé",   lat:37.30408, lon:-7.95308 }
+];
+
+const RADAR_RANGE_KM = 120;
+```
+
+The circles:
+
+- have no labels;
+- have no fill;
+- use a subtle outline;
+- include a small center marker for each radar site;
+- are displayed above the radar image;
+- do not interfere with map interaction;
+- are controlled by a small Leaflet map control near the location control;
+- are **off by default**;
+- are not persisted between sessions.
+
+The range overlay is informational. It does not clip or otherwise alter the radar image.
+
+The 120 km distance is particularly relevant because IPMA notes that at distances greater than approximately 120 km from a radar, the observed radar quantity can become less representative of conditions near the surface.
+
+### Integration requirement
+
+The range circles must be implemented as a separate Leaflet layer. They must **not** be incorporated into `RADAR_BOUNDS` or used to modify the radar image registration.
+
+The authoritative radar registration remains:
+
+```javascript
+const RADAR_BOUNDS = [
+  [34.011513, -12.454795],
+  [43.792862, -4.345465]
+];
+```
+
+---
+
 ---
 
 # 14. Map viewport versus radar registration
@@ -442,7 +524,7 @@ This is worth retaining in the integration documentation because it caused subst
 
 ---
 
-# 16. Repository and hosting
+# 18. Repository and hosting
 
 The standalone project repository is:
 
@@ -460,7 +542,7 @@ The standalone project should remain available as a reference while the radar is
 
 ---
 
-# 17. PWA / browser assets
+# 19. PWA / browser assets
 
 The standalone app includes:
 
@@ -477,7 +559,7 @@ This is relevant when moving the radar into the larger application: the radar it
 
 ---
 
-# 18. Things deliberately excluded
+# 20. Things deliberately excluded
 
 Satellite imagery was investigated earlier but was explicitly excluded.
 
@@ -487,7 +569,7 @@ The radar component should remain focused on the IPMA precipitation product.
 
 ---
 
-# 19. What should be carried into Praias de Portugal
+# 21. What should be carried into Praias de Portugal
 
 Treat the following as the radar core:
 
@@ -527,6 +609,8 @@ Treat the following as the radar core:
 - Play/Pause.
 - Next.
 - Refresh.
+- Minimum radar display threshold (0.1 / 0.5 mm/h).
+- Radar range toggle (three 120 km radar circles).
 
 ### User feedback
 
@@ -541,7 +625,7 @@ Treat the following as the radar core:
 
 ---
 
-# 20. Things NOT to regress
+# 22. Things NOT to regress
 
 Do not:
 
@@ -556,11 +640,17 @@ Do not:
 - hard-code Portugal's summer UTC offset;
 - solve a viewport problem by changing the ImageOverlay bounds;
 - reintroduce satellite imagery without an explicit request;
-- accidentally debug the IPMA website instead of the integrated application.
+- accidentally debug the IPMA website instead of the integrated application;
+- restore the 1 or 2 mm/h experimental threshold filters;
+- describe the 0.5 mm/h display filter as exact numerical pixel classification;
+- remove the Radar range toggle;
+- change the radar range from 120 km without a deliberate product decision;
+- add labels to the three range circles;
+- use the range circles to alter `RADAR_BOUNDS` or clip the radar image.
 
 ---
 
-# 21. Integration strategy
+# 23. Integration strategy
 
 The safest approach is:
 
@@ -578,7 +668,7 @@ Do not simultaneously change acquisition, geographic registration, playback, and
 
 ---
 
-# 22. Testing checklist for the integrated version
+# 24. Testing checklist for the integrated version
 
 Test on desktop and on the real iPhone/Safari environment:
 
@@ -608,7 +698,7 @@ The integrated app should be compared against the standalone known-good radar wh
 
 ---
 
-# 23. Recommended future refinement
+# 25. Recommended future refinement
 
 The earlier investigation considered reducing the history to approximately four hours at 10-minute intervals, giving roughly 25 frames.
 
@@ -622,7 +712,7 @@ If a longer history or different default is desired in Praias de Portugal, make 
 
 ---
 
-# 24. Central insight to preserve
+# 26. Central insight to preserve
 
 The most important conclusion of the entire investigation is:
 
@@ -639,7 +729,7 @@ The current implementation is therefore based on IPMA's own acquisition and regi
 
 ---
 
-# 25. Final handoff summary
+# 27. Final handoff summary
 
 The standalone radar is now a good, stable reference implementation.
 
