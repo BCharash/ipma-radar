@@ -1103,6 +1103,50 @@ one unavailable observation was skipped. Other runs were slower, so these are
 connection/service samples, not a latency promise. Real iPhone/Safari behavior
 and the user's network timings remain acceptance checks.
 
+## 6 November 2026 — Keep the clock through radar toggles and stabilize quality
+
+The user clarified that radar check/uncheck should allow playback to continue,
+reversing the previous stop-on-toggle request. Both visibility changes now
+preserve the running timer, observation time, source cadence, and sequence.
+The clock source is selected when Play starts and remains independent of layer
+visibility. Both data sources render their most recent available observation
+at or before that clock. If a source has no earlier data, its layer is hidden and
+its readout shows a dash instead of presenting a future frame. Native source
+observation times may differ and remain visible side by side.
+
+Inspection found that a cached detailed frame could be used inside an otherwise
+low-resolution animation. This is a concrete source of inconsistent sampling
+that can look like cloud motion; it does not prove the cause of every reported
+visual shift. Playback now uses overview imagery throughout. Detail is reserved
+for paused inspection, uses the same requested time, and is not inserted into
+an ongoing movie. Pausing/end-of-playback also retain the user's current map
+view instead of automatically returning to the starting view. A complete
+higher-detail animation batch is not downloaded or substituted in this version.
+
+The set of eligible satellite observations is also frozen within each loop.
+Late-arriving observations wait until the next loop instead of replacing an
+already displayed observation at the same clock position. A paused detail
+response is applied only if its exact observation remains selected; refinement
+and map movement retain that selected observation rather than selecting a newly
+arrived timestamp.
+
+The user also compared Meteoblue's iOS cloud rendering and fast, closely spaced
+frames. Reviewed Meteoblue's official provider and API documentation, verified
+public five-minute rapid-scan and 15-minute Cloud Mask catalogues, and retrieved
+a Cloud Mask image. Findings, source links, limitations, and the next isolated
+cloud-only experiment are in [satellite service comparison](satellite-services.md).
+Meteoblue documents EUMETSAT/Meteosat data and requires an API key for its external
+tile API; no such key or subscription access has been assumed. The user's
+reported two-minute satellite observation cadence is not independently verified.
+No approximate cloud-colour filter or replacement satellite service was deployed.
+
+Validation: Chrome checks passed uninterrupted check/uncheck (same timer and
+clock), progressive loading/loop adoption, stable requested time during detail
+loading, uniform overview quality throughout a movie with cached detail present,
+zoom refinement without history reload, and numeric registration. Existing
+cache, opacity, outlines, paired readouts, and update-failure tests passed with
+no JavaScript errors. Real iOS comparison remains a device acceptance step.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite

@@ -10,31 +10,40 @@ let playbackTimer = null;
 let playbackView = null;
 let playbackTimeline = [];
 let playbackCursor = 0;
+let playbackSource = "radar";
+let playbackTime = null;
+let playbackSatelliteTimes = new Set();
 
-function playbackFrames(){ return radarVisible ? radarFrames : satelliteFrames; }
-function playbackIndex(){ return radarVisible ? currentFrameIndex : currentSatelliteIndex; }
+function playbackFrames(){ return (playing ? playbackSource === "radar" : radarVisible) ? radarFrames : satelliteFrames; }
+function playbackIndex(){ return (playing ? playbackSource === "radar" : radarVisible) ? currentFrameIndex : currentSatelliteIndex; }
 
 function availablePlaybackFrames(){
   const frames = playbackFrames();
-  if(radarVisible && satelliteLoading && satelliteFrames.length){
+  if((playing ? playbackSource === "radar" : radarVisible) && satelliteLoading && satelliteFrames.length){
     return frames.filter(frame => frame.date.getTime() >= satelliteFrames[0].date.getTime());
   }
   return frames;
 }
 
 function displayPlaybackFrame(index){
-  if(radarVisible) setVisibleFrame(index);
-  else{
-    displaySatelliteFrame(index);
-    updateFrameCounter();
-  }
+  const frame = playbackFrames()[index];
+  if(frame) displayPlaybackTime(frame.date.getTime());
   if(!playing) queueSatelliteRefinement();
 }
 
 function displayPlaybackTime(time){
-  const index = playbackFrames().findIndex(frame => frame.date.getTime() === time);
-  if(index < 0){ stopPlayback(false); return; }
-  displayPlaybackFrame(index);
+  playbackTime = time;
+  let index = -1;
+  for(let i=0;i<radarFrames.length;i++){
+    if(radarFrames[i].date.getTime() <= time) index = i;
+  }
+  if(index >= 0) setVisibleFrame(index,false);
+  else{
+    radarFrameAvailable = false;
+    for(const overlay of radarOverlays) overlay.setOpacity(0);
+  }
+  syncSatelliteToRadar(time);
+  updateFrameCounter();
 }
 
 function stopPlayback(restoreView=true){
@@ -58,8 +67,10 @@ function startPlayback(){
   const frames = availablePlaybackFrames();
   if(frames.length < 2) return;
   cancelSatelliteRefinement();
+  playbackSource = radarVisible ? "radar" : "satellite";
   playbackView = {center:map.getCenter(),zoom:map.getZoom()};
   playbackTimeline = frames.map(frame => frame.date.getTime());
+  playbackSatelliteTimes = new Set(satelliteFrames.map(frame => frame.date.getTime()));
   playbackCursor = 0;
   setPlayingUI(true);
   displayPlaybackTime(playbackTimeline[0]);
@@ -74,10 +85,11 @@ function scheduleNextFrame(){
     if(playbackCursor >= playbackTimeline.length){
       if(looping){
         playbackTimeline = availablePlaybackFrames().map(frame => frame.date.getTime());
+        playbackSatelliteTimes = new Set(satelliteFrames.map(frame => frame.date.getTime()));
         playbackCursor = 0;
       }
       else{
-        stopPlayback(true);
+        stopPlayback(false);
         queueSatelliteRefinement();
         return;
       }

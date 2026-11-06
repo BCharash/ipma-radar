@@ -29,6 +29,7 @@ let map = null;
 let radarOverlays = [];
 
 let radarVisible = true;
+let radarFrameAvailable = true;
 let radarOpacity = 0.8;
 
 let radarRangeLayer = null;
@@ -246,7 +247,7 @@ function createRadarOverlays(){
 }
 
 
-function setVisibleFrame(index){
+function setVisibleFrame(index,synchronize=true){
 
   if(
     index<0 ||
@@ -270,24 +271,27 @@ function setVisibleFrame(index){
 
   currentFrameIndex =
     index;
+  radarFrameAvailable = true;
+  if(synchronize && !playing) playbackTime = radarFrames[index].date.getTime();
 
   updateFrameCounter();
-  syncSatelliteToRadar();
+  if(synchronize) syncSatelliteToRadar();
 }
 
 
 function setRadarVisible(value){
 
-  stopPlayback(false);
+  const time = playbackTime ?? (radarVisible && radarFrames.length
+    ? radarFrames[currentFrameIndex].date.getTime()
+    : satelliteFrames[currentSatelliteIndex]?.date.getTime());
   radarVisible = value;
   radarToggle.checked = value;
 
-  setVisibleFrame(currentFrameIndex);
+  if(time !== undefined && time !== null) displayPlaybackTime(time);
   updateFrameCounter();
 
   document.getElementById("radarLegend").hidden = !value;
 
   updatePlaybackControls();
-  syncSatelliteToRadar();
   queueSatelliteRefinement();
 }

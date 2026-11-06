@@ -149,7 +149,7 @@ function displaySatelliteFrame(index){
   let selected = null;
   for(let i=0; i<satelliteFrames.length; i++){
     const candidate = satelliteFrames[i];
-    const detailFits = candidate.detail && candidate.detail.geometry.bounds.contains(map.getBounds());
+    const detailFits = !playing && candidate.detail && candidate.detail.geometry.bounds.contains(map.getBounds());
     const overlay = detailFits ? candidate.detail.overlay : candidate.overlay;
     candidate.overlay.setOpacity(i === index && !detailFits ? satelliteOpacity : 0);
     if(candidate.detail) candidate.detail.overlay.setOpacity(i === index && detailFits ? satelliteOpacity : 0);
@@ -170,19 +170,20 @@ function displaySatelliteFrame(index){
     (frame.detail && selected === frame.detail.overlay ? " · detailed" : " · low resolution") +
     (satelliteHistoryIncomplete ? " · history incomplete; Refresh to retry" : "") +
     (satelliteMissingCount ? " · " + satelliteMissingCount + " unavailable images skipped" : "") +
-    (radarVisible && radarFrames.length && radarFrames[currentFrameIndex].date-frame.date >= satelliteStepMs
-      ? " · " + Math.round((radarFrames[currentFrameIndex].date-frame.date)/60000) + " min before radar" : ""),"ready");
+    (playbackTime !== null && playbackTime-frame.date.getTime() >= satelliteStepMs
+      ? " · " + Math.round((playbackTime-frame.date.getTime())/60000) + " min before timeline" : ""),"ready");
 }
 
-function syncSatelliteToRadar(){
+function syncSatelliteToRadar(time=playbackTime){
   if(!satelliteFrames.length) return;
-  if(!radarVisible || !radarFrames.length){
+  if(time === null && (!radarVisible || !radarFrames.length)){
     displaySatelliteFrame(currentSatelliteIndex);
     return;
   }
-  const time = radarFrames[currentFrameIndex].date.getTime();
+  if(time === null) time = radarFrames[currentFrameIndex].date.getTime();
   let index = -1;
   for(let i=0; i<satelliteFrames.length; i++){
+    if(playing && !playbackSatelliteTimes.has(satelliteFrames[i].date.getTime())) continue;
     if(satelliteFrames[i].date.getTime() <= time) index = i;
   }
   displaySatelliteFrame(index);
@@ -235,7 +236,7 @@ async function updateSatellite(force=false){
     const dates = [];
     for(let time=newest; time>=oldest; time-=metadata.stepMs) dates.push(new Date(time));
     // The first request must be displayable against the selected radar time.
-    const radarTime = radarVisible && radarFrames.length ? radarFrames[currentFrameIndex].date.getTime() : newest;
+    const radarTime = playbackTime ?? (radarVisible && radarFrames.length ? radarFrames[currentFrameIndex].date.getTime() : newest);
     const targetTime = newest-Math.max(0,Math.ceil((newest-radarTime)/metadata.stepMs))*metadata.stepMs;
     const target = new Date(targetTime);
     if(!dates.some(date => date.getTime() === targetTime)) dates.push(target);
@@ -262,7 +263,7 @@ async function updateSatellite(force=false){
       }
       staged.push({date,overlay,geometry:renderGeometry,product:productKey,preview:true});
       staged.sort((a,b) => a.date-b.date);
-      const radarTime = radarVisible && radarFrames.length ? radarFrames[currentFrameIndex].date.getTime() : Infinity;
+      const radarTime = playbackTime ?? (radarVisible && radarFrames.length ? radarFrames[currentFrameIndex].date.getTime() : Infinity);
       if(!committed && staged.some(frame => frame.date.getTime() <= radarTime)){
         // Keep the old scene until replacement imagery can actually be shown.
         stopPlayback(false);
@@ -334,6 +335,7 @@ function updatePlaybackControls(){
   historySelect.disabled = !active;
   intervalSelect.disabled = !radarVisible;
   for(const control of [previousButton, nextButton, playButton, loopButton]){
+    if(control === playButton && playing){ control.disabled = false; continue; }
     control.disabled = !active || (satelliteLoading && satelliteFrames.length < 2) ||
       availablePlaybackFrames().length < (control === playButton ? 2 : 1);
   }
@@ -357,7 +359,9 @@ function initializeSatellite(){
   });
   map.on("moveend", () => {
     // Leaflet reprojects every loaded overview; zoom never reloads its history.
-    syncSatelliteToRadar();
+    const selected = satelliteFrames.findIndex(frame => frame.overlay === satelliteLayer || frame.detail?.overlay === satelliteLayer);
+    if(!playing && selected >= 0) displaySatelliteFrame(selected);
+    else syncSatelliteToRadar();
     queueSatelliteRefinement();
   });
 }

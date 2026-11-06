@@ -55,11 +55,12 @@ for coverage, generalization, and source information.
 ## Time registration
 
 Each satellite request includes an explicit observation timestamp from the
-provider's published cadence. Combined playback chooses the most recent loaded
-satellite observation at or before the selected radar timestamp. It never pairs
-a future satellite image with an earlier radar frame. Missing slots retain the
-most recent earlier observation, with actual time and lag labelled. If there is
-no earlier observation, the satellite is hidden for that radar time. Radar can
+provider's published cadence. A shared clock follows the sequence selected when
+Play starts. Radar visibility changes do not change this clock or its cadence.
+Each source selects its most recent loaded observation at or before the clock
+time. The two actual observation times can differ; both are displayed. Missing
+slots retain an earlier observation with its time labelled. If there is no
+earlier observation for a source, that source is hidden. Radar can
 advance every five minutes while 10-minute satellite imagery repeats for two
 steps or 15-minute imagery repeats for three; no intermediate observations are
 invented.
@@ -68,11 +69,16 @@ Satellite-only playback uses native satellite observations. No interpolated
 cloud movement or future prediction is implied.
 
 During progressive loading, a play-through snapshots the available observation
-times. New frames can be inserted into the loaded collection without shifting
-the running animation clock. The next loop adopts the then-available sequence.
+times and available satellite observations. New frames can be inserted into the
+loaded collection without shifting the running clock or substituting a newer
+satellite observation partway through a loop. The next loop adopts the
+then-available sequence and observations.
 During combined loading, the radar play-through
 starts within the available satellite time range. Both original frame indices
-and observation times are shown in separate bottom readouts.
+and observation times are shown in separate bottom readouts. Playback uses
+overview imagery consistently and excludes cached detailed frames, avoiding
+per-frame changes in image sampling. Paused detail uses the same requested
+observation time and does not move the shared clock.
 
 ## Checks
 

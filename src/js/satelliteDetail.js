@@ -36,12 +36,14 @@ async function refineSatelliteFrame(){
     const image = await loadSatelliteImage(satelliteImageURL(product,frame.date,geometry),request.signal);
     if(!image || request.signal.aborted || generation !== satelliteDetailGeneration ||
       !satelliteFrames.includes(frame) || playing) return;
+    const stillSelected = frame.overlay === satelliteLayer || frame.detail?.overlay === satelliteLayer;
+    if(!stillSelected) return;
     const overlay = L.imageOverlay(image,geometry.bounds,{
       pane:"satellitePane",opacity:0,interactive:false
     }).addTo(map);
     if(frame.detail) frame.detail.overlay.remove();
     frame.detail = {overlay,geometry};
-    syncSatelliteToRadar();
+    displaySatelliteFrame(satelliteFrames.indexOf(frame));
   }
   catch(error){
     // The registered overview remains available if refinement fails.

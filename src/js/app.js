@@ -288,7 +288,7 @@ playButton.addEventListener(
   () => {
 
     if(playing){
-      stopPlayback(true);
+      stopPlayback(false);
       queueSatelliteRefinement();
     }
     else{

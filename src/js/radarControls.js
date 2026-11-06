@@ -92,8 +92,8 @@ function updateFrameCounter(){
   }).format(date);
   radarReadout.hidden = !radarVisible || !radarFrames.length;
   if(!radarReadout.hidden){
-    radarReadout.textContent = "Radar " + (currentFrameIndex+1) + "/" + radarFrames.length +
-      " · " + clock(radarFrames[currentFrameIndex].date);
+    radarReadout.textContent = "Radar " + (radarFrameAvailable ? currentFrameIndex+1 : "—") + "/" + radarFrames.length +
+      (radarFrameAvailable ? " · " + clock(radarFrames[currentFrameIndex].date) : "");
   }
   satelliteReadout.hidden = !SATELLITE_PRODUCTS[satelliteSelect.value] || !satelliteFrames.length;
   if(!satelliteReadout.hidden){

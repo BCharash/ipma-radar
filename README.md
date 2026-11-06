@@ -25,14 +25,19 @@ native 10/15-minute cadence. Playback is available once two observations are
 loaded; a running animation keeps its time sequence while more frames arrive.
 The next loop (or a new Play) includes newly available frames. The interval selector controls radar only. History
 selection applies to both. Failed satellite images are skipped. When radar is
-visible, its timestamp drives playback and the satellite uses the latest
-available observation at or before that time, holding it across missing slots
-with its lag labelled. If no earlier observation exists, no future image is
-substituted. Satellite timestamps and lag are shown separately; observations are not
+visible at Play, its sequence starts the clock; otherwise satellite does.
+That clock keeps running when radar is checked or unchecked. Each source shows
+its most recent observation at or before the clock time, holding earlier imagery
+across missing slots with actual timestamps shown. If no earlier observation
+exists, that source is hidden rather than showing a future image. Observations are not
 invented between frames. These animations show observed history, not a forecast.
 
-Both radar toggle directions stop playback. Radar and satellite frame numbers
-and Lisbon-local times appear side by side at the bottom of the map.
+Both radar toggle directions change visibility without stopping or restarting
+playback. Radar and satellite frame numbers and Lisbon-local times appear side
+by side at the bottom of the map. Animation consistently uses overview imagery,
+even when a paused frame has a cached detailed version. Pausing and finishing
+playback retain the current map view; detail inspection keeps the same requested
+observation time. A complete higher-detail animation is not prepared in this version.
 
 **Refresh** updates both sources. Zoom reprojects the loaded history without
 reloading it. While paused, the selected observation can receive a higher-detail
@@ -61,6 +66,10 @@ bounds. See [registration and verification](docs/registration.md).
 
 The existing 0.1/0.5 mm/h display filter is unchanged. There is no rain-gauge
 integration or future prediction animation in this version.
+
+See the [satellite service comparison](docs/satellite-services.md) for the
+Meteoblue comparison, observed versus animated time steps, and no-key rapid-scan
+and cloud-mask candidates. Transparent cloud-only imagery is not implemented.
 
 ## Project structure
 
