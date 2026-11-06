@@ -1,0 +1,317 @@
+
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  padding:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:#fff
+}
+
+#app{
+  width:100%;
+  height:100%;
+  display:flex;
+  flex-direction:column
+}
+
+#header{
+  flex:0 0 auto;
+  width:100%;
+  background:#fff;
+  border-bottom:1px solid #ddd;
+  padding:8px 10px;
+  z-index:1000
+}
+
+#controls{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:6px
+}
+
+#title{
+  font-size:17px;
+  font-weight:600;
+  white-space:nowrap;
+  margin-right:2px
+}
+
+select{
+  height:34px;
+  border:1px solid #bbb;
+  border-radius:6px;
+  background:#fff;
+  padding:0 4px;
+  font-size:14px;
+  color:#222
+}
+
+#historySelect{
+  width:62px;
+  min-width:62px
+}
+
+#intervalSelect{
+  width:72px;
+  min-width:72px
+}
+
+.control-button{
+  width:34px;
+  height:34px;
+  flex:0 0 34px;
+  padding:0;
+  border:1px solid #bbb;
+  border-radius:6px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  color:#222;
+  -webkit-tap-highlight-color:transparent
+}
+
+.control-button:hover{
+  background:#f3f3f3
+}
+
+.control-button:active{
+  background:#e8e8e8
+}
+
+.control-button svg{
+  width:19px;
+  height:19px;
+  display:block
+}
+
+.playback-button{
+  width:38px;
+  height:38px;
+  flex-basis:38px
+}
+
+.playback-button svg{
+  width:21px;
+  height:21px
+}
+
+.loop-button.loop-active{
+  background:#e8e8e8;
+  border-color:#888
+}
+
+#map{
+  flex:1 1 auto;
+  min-height:0;
+  width:100%
+}
+
+.leaflet-control-zoom a{
+  width:34px!important;
+  height:34px!important;
+  line-height:34px!important;
+  font-size:20px!important
+}
+
+.location-control{
+  width:34px;
+  height:34px;
+  background:#fff;
+  border:2px solid rgba(0,0,0,.2);
+  border-radius:4px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0
+}
+
+.location-control svg{
+  width:19px;
+  height:19px
+}
+
+.radar-range-control{
+  width:34px;
+  height:34px;
+  background:#fff;
+  border:2px solid rgba(0,0,0,.2);
+  border-radius:4px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  -webkit-tap-highlight-color:transparent
+}
+
+.radar-range-control svg{
+  width:19px;
+  height:19px
+}
+
+.radar-range-control.range-active{
+  background:#e8e8e8;
+  border-color:#888
+}
+
+#radarLegend{
+  position:absolute;
+  left:10px;
+  bottom:10px;
+  z-index:1000;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  padding:6px 7px;
+  background:rgba(255,255,255,.35);
+  border-radius:5px;
+  font-size:10px;
+  line-height:1
+}
+
+.legendTitle{
+  margin-bottom:4px;
+  font-weight:600
+}
+
+.legendThreshold{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  margin-bottom:6px
+}
+
+.legendThreshold label{
+  font-size:10px;
+  white-space:nowrap
+}
+
+#thresholdSelect{
+  height:25px;
+  border:1px solid #aaa;
+  border-radius:4px;
+  background:rgba(255,255,255,.92);
+  padding:0 4px;
+  font-size:11px;
+  color:#222
+}
+
+.legendScale{
+  display:flex;
+  align-items:stretch
+}
+
+.legendBar{
+  width:14px;
+  height:238px;
+  background:linear-gradient(
+    to top,
+    #0000ff 0%,
+    #00ffff 18%,
+    #00ff00 38%,
+    #ffff00 58%,
+    #ff8000 75%,
+    #ff0000 88%,
+    #ff00ff 100%
+  );
+  border-radius:2px
+}
+
+.legendLabels{
+  height:238px;
+  margin-left:5px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between
+}
+
+#status{
+  position:absolute;
+  left:50%;
+  bottom:12px;
+  transform:translateX(-50%);
+  z-index:1100;
+  background:rgba(255,255,255,.92);
+  border:1px solid #ccc;
+  border-radius:6px;
+  padding:5px 9px;
+  font-size:12px;
+  color:#333;
+  pointer-events:none;
+  display:none;
+  white-space:nowrap
+}
+
+#frameCounter{
+  position:absolute;
+  left:50%;
+  bottom:12px;
+  transform:translateX(-50%);
+  z-index:1050;
+  background:rgba(255,255,255,.88);
+  border:1px solid rgba(0,0,0,.20);
+  border-radius:5px;
+  padding:4px 8px;
+  font-size:12px;
+  color:#333;
+  pointer-events:none;
+  white-space:nowrap;
+  display:none
+}
+
+@media(max-width:600px){
+
+  #header{
+    padding:6px 7px
+  }
+
+  #controls{
+    gap:4px
+  }
+
+  #title{
+    font-size:15px
+  }
+
+  select{
+    height:32px;
+    font-size:13px;
+    padding-left:3px;
+    padding-right:2px
+  }
+
+  #historySelect{
+    width:58px;
+    min-width:58px
+  }
+
+  #intervalSelect{
+    width:70px;
+    min-width:70px
+  }
+
+  .control-button{
+    width:32px;
+    height:32px;
+    flex-basis:32px
+  }
+
+  .playback-button{
+    width:40px;
+    height:40px;
+    flex-basis:40px
+  }
+
+  .playback-button svg{
+    width:22px;
+    height:22px
+  }
+}
