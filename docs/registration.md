@@ -37,9 +37,11 @@ Scenes are padded and their projected corners snapped outward to a metre grid.
 The snapped corners define both the requested WMS BBOX and the Leaflet overlay,
 so snapping does not shift an image within a different rectangle. Scenes are
 reused within their coverage and a one-level zoom difference. This keeps image
-URLs stable for caching. Image resolution is capped at 768 pixels on smaller
-viewports and 1024 otherwise; this may limit fine detail without changing
-registration. New coverage loads while the old registered scene stays visible.
+URLs stable for caching. A first preview uses a maximum image side of 256 pixels;
+prepared history uses 512 pixels on smaller viewports and 768 otherwise. Preview
+and prepared images use the same projected BBOX and geographic corners. They
+may differ in detail, but refinement does not shift their registration. New
+coverage loads while the old registered scene stays visible.
 
 Local Natural Earth coastlines and country borders are projected by Leaflet
 in a separate pane at z-index 460, above radar and satellite. Their geometry and

@@ -36,6 +36,13 @@ a bounded memory cache and browser Cache Storage (when available), including
 across page reloads. Known failed requests are briefly deferred before retrying.
 The first uncached visit to a product/region still depends on the provider.
 
+For a cold load, the app requests only the relevant satellite-family catalogue,
+then shows a small registered preview for the selected radar time before
+downloading animation history. The preview is replaced with higher-detail
+imagery without changing its geographic bounds. A cached prepared frame is used
+directly when available. History preparation stops after 60 seconds with partial
+results retained and an incomplete-history message; Refresh retries missing data.
+
 Local coastline and country-border outlines remain above both satellite and
 radar, including at 100% imagery opacity. They cover Portugal and the nearby
 Atlantic/western Europe region; see [map data](data/README.md).
@@ -129,6 +136,6 @@ python3 tests/browser-check.py
 
 It uses an isolated browser profile and public imagery, checking opacity,
 satellite-only/combined animation, timestamp ordering and lag labels,
-registration after pan/zoom, and failure recovery. It requires network access
+first-image priority, cache reuse, registration after pan/zoom, and failure recovery. It requires network access
 and can take several minutes. It saves a mobile screenshot in the system
 temporary directory. Real iPhone/Safari testing remains separate.

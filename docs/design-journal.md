@@ -1007,6 +1007,55 @@ animation, timestamp matching/lag labels, explicit Map selection, and stale
 request cancellation. No JavaScript errors were recorded. Real iPhone/Safari
 storage, rendering, and memory behavior still need acceptance checks.
 
+## 6 November 2026 — Prioritize the first satellite image
+
+The user reported cold first-image waits measured in minutes. Caching only helps
+repeat requests; the first frame also needed a smaller and better-prioritized
+request path. These changes supersede the earlier 768/1024 scene-size defaults.
+
+Measurements on this connection:
+
+- Full WMS catalogue: 282,238 bytes, approximately 6.34 seconds.
+- MTG-only catalogue: 34,870 bytes, approximately 1.74 seconds.
+- Same Geo Colour scene at a 256-pixel maximum side: 79,598 bytes, 5.87 seconds.
+- The previous 768-pixel maximum side: 613,523 bytes, 14.42 seconds.
+
+These are individual requests, not guarantees for other connections or times.
+The tested GeoWebCache WMTS catalogue route returned HTTP 400 (coverage reader
+error); it was not adopted as a proven replacement.
+
+The first request now targets the actual selected radar time, rounded back to
+an available native satellite slot. Previously, newest-first loading could
+spend time fetching newer images that could not be shown against a paused or
+older radar frame. It now queues that matching frame and earlier observations
+before newer ones. A selected radar time outside the normal history window adds
+one matching slot, rather than expanding into an unbounded download window.
+
+Catalogue requests filter by provider namespace (`mtg_fd` or `msg_fes`) and only
+reuse an in-memory catalogue if the requested layer is present. Cold imagery
+starts with a 256-pixel preview, using the exact same EPSG:3857 BBOX and overlay
+corners as its later refinement. History requests do not compete with that first
+preview. A cached prepared frame bypasses the preview request. The preview time
+and preparation progress are displayed while higher-detail imagery loads.
+
+Prepared history now uses 512-pixel maximum sides on smaller viewports and 768
+otherwise. Refinement replaces the preview at the same timestamp instead of
+creating a duplicate animation frame. Preview loading is limited to 10 seconds;
+individual prepared-image requests retain their 20-second limit. The complete
+update has a 60-second budget. Partial imagery is retained and incomplete
+history is labelled for retry rather than continuing an open-ended wait.
+
+Validation: a live cold-profile Chrome test showed the first image at about
+2.54 seconds (catalogue about 0.54 seconds) and seven one-hour hybrid frames
+ready at about 21.09 seconds. Deterministic browser checks confirmed that a
+paused historical radar frame gets a matching preview first, no history request
+starts before that preview resolves, and refinement leaves unique timestamps.
+Caching checks still issued zero GetMap requests on repeat preparation.
+Standalone/combined playback, opacity, outlines, failure retention, cancellation,
+and registration after pan/zoom passed without JavaScript errors (placement
+error approximately 0.51 CSS pixels). Real iPhone/network timings remain to be
+measured; the app cannot guarantee remote-service response times.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite
