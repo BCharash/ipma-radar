@@ -138,6 +138,7 @@ async function rebuildRadar(){
       radarFrames.length-1;
 
     createRadarOverlays();
+    updatePlaybackControls();
 
     if(radarRangeVisible && radarRangeLayer && !map.hasLayer(radarRangeLayer)){
       radarRangeLayer.addTo(map);
@@ -288,6 +289,7 @@ playButton.addEventListener(
 
     if(playing){
       stopPlayback(true);
+      queueSatelliteRefinement();
     }
     else{
       startPlayback();

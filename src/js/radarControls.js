@@ -85,38 +85,23 @@ function hideStatus(){
 
 
 function updateFrameCounter(){
-
-  const frames = playbackFrames();
-  const index = playbackIndex();
-
-  if(!frames.length){
-    frameCounter.style.display = "none";
-    return;
+  const radarReadout = document.getElementById("radarFrameCounter");
+  const satelliteReadout = document.getElementById("satelliteFrameCounter");
+  const clock = date => new Intl.DateTimeFormat("en-GB",{
+    timeZone:"Europe/Lisbon",hour:"2-digit",minute:"2-digit",hour12:false
+  }).format(date);
+  radarReadout.hidden = !radarVisible || !radarFrames.length;
+  if(!radarReadout.hidden){
+    radarReadout.textContent = "Radar " + (currentFrameIndex+1) + "/" + radarFrames.length +
+      " · " + clock(radarFrames[currentFrameIndex].date);
   }
-
-  const frame =
-    frames[index];
-
-  const localTime =
-    new Intl.DateTimeFormat(
-      "en-GB",
-      {
-        timeZone:"Europe/Lisbon",
-        hour:"2-digit",
-        minute:"2-digit",
-        hour12:false
-      }
-    ).format(frame.date);
-
-  frameCounter.textContent =
-    (radarVisible ? "Radar " : "Satellite ") +
-    (index + 1) +
-    " of " +
-    frames.length +
-    " · " +
-    localTime;
-
-  frameCounter.style.display = "block";
+  satelliteReadout.hidden = !SATELLITE_PRODUCTS[satelliteSelect.value] || !satelliteFrames.length;
+  if(!satelliteReadout.hidden){
+    const index = satelliteFrames.findIndex(frame => frame.overlay === satelliteLayer || frame.detail?.overlay === satelliteLayer);
+    satelliteReadout.textContent = "Satellite " + (index < 0 ? "—" : index+1) + "/" + satelliteFrames.length +
+      (index < 0 ? "" : " · " + clock(satelliteFrames[index].date));
+  }
+  frameCounter.style.display = radarReadout.hidden && satelliteReadout.hidden ? "none" : "flex";
 }
 
 

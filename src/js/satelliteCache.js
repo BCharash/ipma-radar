@@ -102,22 +102,6 @@ async function satelliteBlobURL(url, signal){
   return objectURL;
 }
 
-async function isSatelliteImageCached(url){
-  if(satelliteImageCache.has(url)) return true;
-  let timeout;
-  try{
-    return await Promise.race([
-      (async () => {
-        const cache = await openSatelliteCache();
-        return !!(cache && await cache.match(url));
-      })(),
-      new Promise(resolve => { timeout = setTimeout(() => resolve(false),500); })
-    ]);
-  }
-  catch(error){ return false; }
-  finally{ clearTimeout(timeout); }
-}
-
 function loadSatelliteImage(url, signal, timeoutMs=20000){
   if(Date.now() < (satelliteFailedUntil.get(url) || 0)){
     satelliteCacheStats.failureSkips++;

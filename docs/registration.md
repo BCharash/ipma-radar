@@ -37,11 +37,15 @@ Scenes are padded and their projected corners snapped outward to a metre grid.
 The snapped corners define both the requested WMS BBOX and the Leaflet overlay,
 so snapping does not shift an image within a different rectangle. Scenes are
 reused within their coverage and a one-level zoom difference. This keeps image
-URLs stable for caching. A first preview uses a maximum image side of 256 pixels;
-prepared history uses 512 pixels on smaller viewports and 768 otherwise. Preview
-and prepared images use the same projected BBOX and geographic corners. They
-may differ in detail, but refinement does not shift their registration. New
-coverage loads while the old registered scene stays visible.
+URLs stable for caching. All overview history uses a maximum image side of 256
+pixels. Those observations stay registered through zoom changes without
+reloading. A paused observation can receive a separate viewport detail image
+(512 pixels on smaller viewports, 768 otherwise). Its WMS BBOX and its Leaflet
+corners are derived from the same projected rectangle. Refinement can cover a
+different rectangle from the overview, but retains the same observation time
+and its own exact registration. The overview stays available as a fallback
+when zooming beyond the detail rectangle. Refresh prepares history coverage
+for a new region when required.
 
 Local Natural Earth coastlines and country borders are projected by Leaflet
 in a separate pane at z-index 460, above radar and satellite. Their geometry and
@@ -62,6 +66,13 @@ invented.
 
 Satellite-only playback uses native satellite observations. No interpolated
 cloud movement or future prediction is implied.
+
+During progressive loading, a play-through snapshots the available observation
+times. New frames can be inserted into the loaded collection without shifting
+the running animation clock. The next loop adopts the then-available sequence.
+During combined loading, the radar play-through
+starts within the available satellite time range. Both original frame indices
+and observation times are shown in separate bottom readouts.
 
 ## Checks
 

@@ -20,8 +20,10 @@ composite. IPMA's own satellite routes were investigated; the provider decision
 and request results are recorded in the design journal.
 
 **Play/Pause**, **Previous**, **Next**, and **Loop** work for satellite-only and
-combined views. Satellite observations are preloaded at their native 10/15-minute
-cadence before playback; the interval selector controls radar only. History
+combined views. Low-resolution satellite observations load progressively at their
+native 10/15-minute cadence. Playback is available once two observations are
+loaded; a running animation keeps its time sequence while more frames arrive.
+The next loop (or a new Play) includes newly available frames. The interval selector controls radar only. History
 selection applies to both. Failed satellite images are skipped. When radar is
 visible, its timestamp drives playback and the satellite uses the latest
 available observation at or before that time, holding it across missing slots
@@ -29,18 +31,24 @@ with its lag labelled. If no earlier observation exists, no future image is
 substituted. Satellite timestamps and lag are shown separately; observations are not
 invented between frames. These animations show observed history, not a forecast.
 
-**Refresh** updates both sources. Prepared scenes are reused for nearby pans and
-small zoom changes. New scene coverage loads without clearing the displayed
-image; failed updates retain previous imagery. Successful images are reused from
+Both radar toggle directions stop playback. Radar and satellite frame numbers
+and Lisbon-local times appear side by side at the bottom of the map.
+
+**Refresh** updates both sources. Zoom reprojects the loaded history without
+reloading it. While paused, the selected observation can receive a higher-detail
+viewport image; other history frames are retained. A new detailed frame does not
+change its observation time. Pan outside the prepared history and use Refresh
+to prepare history for the new area. Failed updates retain previous imagery. Successful images are reused from
 a bounded memory cache and browser Cache Storage (when available), including
 across page reloads. Known failed requests are briefly deferred before retrying.
 The first uncached visit to a product/region still depends on the provider.
 
 For a cold load, the app requests only the relevant satellite-family catalogue,
-then shows a small registered preview for the selected radar time before
-downloading animation history. The preview is replaced with higher-detail
-imagery without changing its geographic bounds. A cached prepared frame is used
-directly when available. History preparation stops after 60 seconds with partial
+then queues small registered observations for the selected radar time and an
+earlier slot so a slow newest image cannot block a usable earlier image.
+The whole history loads at low resolution first. Paused-frame detail uses its
+own explicit registered bounds, retaining the overview as a fallback on zoom.
+History preparation stops after 60 seconds with partial
 results retained and an incomplete-history message; Refresh retries missing data.
 
 Local coastline and country-border outlines remain above both satellite and
@@ -94,6 +102,7 @@ current file layout.
 | `src/js/radarControls.js` | Control elements, status messages, frame times, and control presentation |
 | `src/js/satellite.js` | Public satellite catalogue, registered history images, timestamps, opacity, and radar toggle |
 | `src/js/satelliteCache.js` | Bounded memory/persistent satellite image caches and image loading |
+| `src/js/satelliteDetail.js` | Paused-frame detail loading without rebuilding history on zoom |
 | `src/js/mapFeatures.js` | Coastline and country-border outlines above the imagery |
 | `src/js/app.js` | Shared timeline state, loading batches, refresh coordination, event binding, and startup |
 

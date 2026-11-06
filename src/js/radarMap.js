@@ -278,12 +278,9 @@ function setVisibleFrame(index){
 
 function setRadarVisible(value){
 
+  stopPlayback(false);
   radarVisible = value;
   radarToggle.checked = value;
-
-  if(!value){
-    stopPlayback(false);
-  }
 
   setVisibleFrame(currentFrameIndex);
   updateFrameCounter();
@@ -292,4 +289,5 @@ function setRadarVisible(value){
 
   updatePlaybackControls();
   syncSatelliteToRadar();
+  queueSatelliteRefinement();
 }

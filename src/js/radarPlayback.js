@@ -1,30 +1,40 @@
 "use strict";
 
-/* Shared playback controls: radar drives the clock when visible; otherwise
- * satellite observations drive it. Satellite frames are never future-matched.
+/* Snapshot observation times for a play-through. New low-resolution frames and
+ * higher-detail replacements can arrive without changing the running clock.
  */
 const PLAYBACK_DELAY = 180;
 let playing = false;
 let looping = false;
 let playbackTimer = null;
 let playbackView = null;
+let playbackTimeline = [];
+let playbackCursor = 0;
 
-function playbackFrames(){
-  return radarVisible ? radarFrames : satelliteFrames;
-}
+function playbackFrames(){ return radarVisible ? radarFrames : satelliteFrames; }
+function playbackIndex(){ return radarVisible ? currentFrameIndex : currentSatelliteIndex; }
 
-function playbackIndex(){
-  return radarVisible ? currentFrameIndex : currentSatelliteIndex;
+function availablePlaybackFrames(){
+  const frames = playbackFrames();
+  if(radarVisible && satelliteLoading && satelliteFrames.length){
+    return frames.filter(frame => frame.date.getTime() >= satelliteFrames[0].date.getTime());
+  }
+  return frames;
 }
 
 function displayPlaybackFrame(index){
-  if(radarVisible){
-    setVisibleFrame(index);
-  }
+  if(radarVisible) setVisibleFrame(index);
   else{
     displaySatelliteFrame(index);
     updateFrameCounter();
   }
+  if(!playing) queueSatelliteRefinement();
+}
+
+function displayPlaybackTime(time){
+  const index = playbackFrames().findIndex(frame => frame.date.getTime() === time);
+  if(index < 0){ stopPlayback(false); return; }
+  displayPlaybackFrame(index);
 }
 
 function stopPlayback(restoreView=true){
@@ -33,20 +43,26 @@ function stopPlayback(restoreView=true){
     playbackTimer = null;
   }
   if(playing) setPlayingUI(false);
+  playbackTimeline = [];
+  playbackCursor = 0;
   if(restoreView && playbackView && (
-    map.getZoom() !== playbackView.zoom ||
-    map.getCenter().distanceTo(playbackView.center) > 0.1
+    map.getZoom() !== playbackView.zoom || map.getCenter().distanceTo(playbackView.center) > 0.1
   )){
-    map.setView(playbackView.center, playbackView.zoom, {animate:false});
+    map.setView(playbackView.center,playbackView.zoom,{animate:false});
   }
   playbackView = null;
 }
 
 function startPlayback(){
-  if(playbackFrames().length < 2 || playing || satelliteLoading) return;
-  playbackView = {center:map.getCenter(), zoom:map.getZoom()};
-  displayPlaybackFrame(0);
+  if(playing || (satelliteLoading && satelliteFrames.length < 2)) return;
+  const frames = availablePlaybackFrames();
+  if(frames.length < 2) return;
+  cancelSatelliteRefinement();
+  playbackView = {center:map.getCenter(),zoom:map.getZoom()};
+  playbackTimeline = frames.map(frame => frame.date.getTime());
+  playbackCursor = 0;
   setPlayingUI(true);
+  displayPlaybackTime(playbackTimeline[0]);
   scheduleNextFrame();
 }
 
@@ -54,21 +70,21 @@ function scheduleNextFrame(){
   if(!playing) return;
   playbackTimer = setTimeout(() => {
     if(!playing) return;
-    const next = playbackIndex()+1;
-    if(next >= playbackFrames().length){
+    playbackCursor++;
+    if(playbackCursor >= playbackTimeline.length){
       if(looping){
-        displayPlaybackFrame(0);
-        scheduleNextFrame();
+        playbackTimeline = availablePlaybackFrames().map(frame => frame.date.getTime());
+        playbackCursor = 0;
       }
       else{
-        displayPlaybackFrame(playbackFrames().length-1);
         stopPlayback(true);
+        queueSatelliteRefinement();
+        return;
       }
-      return;
     }
-    displayPlaybackFrame(next);
+    displayPlaybackTime(playbackTimeline[playbackCursor]);
     scheduleNextFrame();
-  }, PLAYBACK_DELAY);
+  },PLAYBACK_DELAY);
 }
 
 function showPreviousFrame(){
