@@ -201,6 +201,7 @@ async function initialize(){
   initializeMap();
 
   initializeSatellite();
+  initializeMapFeatures();
 
   initializeMinimumRainThreshold();
 

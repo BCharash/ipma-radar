@@ -33,20 +33,30 @@ The server performs the satellite reprojection. The app does not stretch an
 arbitrary geographic JPEG into a guessed Portugal rectangle. WMS 1.1.1 avoids
 the latitude/longitude axis-order ambiguity of WMS 1.3.0 EPSG:4326 requests.
 
-The scene is padded around the viewport. Panning beyond it or changing zoom
-reloads scene coverage. Existing image corners remain fixed to their geographic
-coordinates while the map transforms them. Opacity changes affect alpha only.
-Image resolution is capped at 1024 pixels on the longer side to limit decoded
-history memory; this can limit detail at high zoom without changing registration.
+Scenes are padded and their projected corners snapped outward to a metre grid.
+The snapped corners define both the requested WMS BBOX and the Leaflet overlay,
+so snapping does not shift an image within a different rectangle. Scenes are
+reused within their coverage and a one-level zoom difference. This keeps image
+URLs stable for caching. Image resolution is capped at 768 pixels on smaller
+viewports and 1024 otherwise; this may limit fine detail without changing
+registration. New coverage loads while the old registered scene stays visible.
+
+Local Natural Earth coastlines and country borders are projected by Leaflet
+in a separate pane at z-index 460, above radar and satellite. Their geometry and
+opacity are independent of imagery sliders. See [map data](../data/README.md)
+for coverage, generalization, and source information.
 
 ## Time registration
 
 Each satellite request includes an explicit observation timestamp from the
 provider's published cadence. Combined playback chooses the most recent loaded
 satellite observation at or before the selected radar timestamp. It never pairs
-a future satellite image with an earlier radar frame. Long internal gaps are
-shown as missing imagery. If radar extends beyond the newest available satellite
-observation, that observation remains visible with its time and lag labelled.
+a future satellite image with an earlier radar frame. Missing slots retain the
+most recent earlier observation, with actual time and lag labelled. If there is
+no earlier observation, the satellite is hidden for that radar time. Radar can
+advance every five minutes while 10-minute satellite imagery repeats for two
+steps or 15-minute imagery repeats for three; no intermediate observations are
+invented.
 
 Satellite-only playback uses native satellite observations. No interpolated
 cloud movement or future prediction is implied.

@@ -24,13 +24,21 @@ combined views. Satellite observations are preloaded at their native 10/15-minut
 cadence before playback; the interval selector controls radar only. History
 selection applies to both. Failed satellite images are skipped. When radar is
 visible, its timestamp drives playback and the satellite uses the latest
-available observation at or before that time. Gaps may show no matching satellite
-image. Satellite timestamps and lag are shown separately; observations are not
+available observation at or before that time, holding it across missing slots
+with its lag labelled. If no earlier observation exists, no future image is
+substituted. Satellite timestamps and lag are shown separately; observations are not
 invented between frames. These animations show observed history, not a forecast.
 
-**Refresh** updates both sources. Panning or zooming outside the prepared scene
-reloads satellite coverage and stops playback. Satellite requires an online
-connection. Image-loading failures retain the underlying map and radar.
+**Refresh** updates both sources. Prepared scenes are reused for nearby pans and
+small zoom changes. New scene coverage loads without clearing the displayed
+image; failed updates retain previous imagery. Successful images are reused from
+a bounded memory cache and browser Cache Storage (when available), including
+across page reloads. Known failed requests are briefly deferred before retrying.
+The first uncached visit to a product/region still depends on the provider.
+
+Local coastline and country-border outlines remain above both satellite and
+radar, including at 100% imagery opacity. They cover Portugal and the nearby
+Atlantic/western Europe region; see [map data](data/README.md).
 
 Satellite registration uses an explicit EPSG:3857 WMS bounding box and the exact
 same geographic corners for Leaflet rendering. Radar retains IPMA's original
@@ -49,6 +57,7 @@ ipma-radar/
 ├── README.md
 ├── assets/images/       App icons and favicon
 │   └── source/         Original artwork and alternate icon
+├── data/               Local coastline and country outlines
 ├── docs/
 │   ├── design-journal.md
 │   └── archive/        Earlier integration handoffs
@@ -77,6 +86,8 @@ current file layout.
 | `src/js/radarPlayback.js` | Animation, looping, frame stepping, and map-view restoration |
 | `src/js/radarControls.js` | Control elements, status messages, frame times, and control presentation |
 | `src/js/satellite.js` | Public satellite catalogue, registered history images, timestamps, opacity, and radar toggle |
+| `src/js/satelliteCache.js` | Bounded memory/persistent satellite image caches and image loading |
+| `src/js/mapFeatures.js` | Coastline and country-border outlines above the imagery |
 | `src/js/app.js` | Shared timeline state, loading batches, refresh coordination, event binding, and startup |
 
 These are ordinary scripts sharing the page's JavaScript scope, following the

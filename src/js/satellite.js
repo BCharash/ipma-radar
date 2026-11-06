@@ -23,6 +23,7 @@ let satelliteMissingCount = 0;
 let satelliteStepMs = 600000;
 let satelliteOpacity = 0.6;
 let satelliteMoveTimer = null;
+const satelliteScenes = [];
 
 const satelliteSelect = document.getElementById("satelliteSelect");
 const satelliteStatus = document.getElementById("satelliteStatus");
@@ -96,23 +97,30 @@ async function getSatelliteCatalogue(signal, force){
 // The request rectangle and Leaflet overlay use the same projected corners.
 // Never place an arbitrary satellite JPEG in the IPMA radar rectangle.
 function satelliteGeometry(){
-  const visible = map.getBounds().pad(0.2);
-  const bounds = L.latLngBounds(
-    [Math.max(-70, visible.getSouth()), Math.max(-180, visible.getWest())],
-    [Math.min(70, visible.getNorth()), Math.min(180, visible.getEast())]
+  const viewport = map.getBounds();
+  const zoom = map.getZoom();
+  const reusable = satelliteScenes.find(scene =>
+    Math.abs(scene.zoom-zoom) <= 1 && scene.bounds.contains(viewport)
   );
-  if(bounds.getSouth() >= bounds.getNorth() || bounds.getWest() >= bounds.getEast()){
-    throw new Error("Viewport outside satellite coverage");
-  }
+  if(reusable) return reusable;
+  const visible = viewport.pad(0.35);
   const crs = L.CRS.EPSG3857;
-  const sw = crs.project(bounds.getSouthWest());
-  const ne = crs.project(bounds.getNorthEast());
-  const ratio = (ne.x-sw.x)/(ne.y-sw.y);
-  return {
-    bounds, bbox:[sw.x, sw.y, ne.x, ne.y], zoom:map.getZoom(),
-    width:Math.max(1, Math.round(ratio >= 1 ? 1024 : 1024*ratio)),
-    height:Math.max(1, Math.round(ratio >= 1 ? 1024/ratio : 1024))
-  };
+  const sw = crs.project(L.latLng(Math.max(-70,visible.getSouth()),Math.max(-180,visible.getWest())));
+  const ne = crs.project(L.latLng(Math.min(70,visible.getNorth()),Math.min(180,visible.getEast())));
+  const grid = 100000/Math.pow(2,Math.max(0,Math.floor((zoom-7)/2)));
+  const bbox = [Math.floor(sw.x/grid)*grid,Math.floor(sw.y/grid)*grid,
+    Math.ceil(ne.x/grid)*grid,Math.ceil(ne.y/grid)*grid];
+  if(bbox[0] >= bbox[2] || bbox[1] >= bbox[3]) throw new Error("Viewport outside satellite coverage");
+  const bounds = L.latLngBounds(crs.unproject(L.point(bbox[0],bbox[1])),
+    crs.unproject(L.point(bbox[2],bbox[3])));
+  const ratio = (bbox[2]-bbox[0])/(bbox[3]-bbox[1]);
+  const size = map.getSize().x <= 600 ? 768 : 1024;
+  const geometry = {bounds,bbox,zoom,
+    width:Math.max(1,Math.round(ratio >= 1 ? size : size*ratio)),
+    height:Math.max(1,Math.round(ratio >= 1 ? size/ratio : size))};
+  satelliteScenes.unshift(geometry);
+  if(satelliteScenes.length > 8) satelliteScenes.pop();
+  return geometry;
 }
 
 function satelliteImageURL(product, date, geometry){
@@ -123,32 +131,6 @@ function satelliteImageURL(product, date, geometry){
     height:String(geometry.height), time:date.toISOString()
   });
   return SATELLITE_WMS_URL + "?" + query;
-}
-
-function loadSatelliteImage(url, signal){
-  return new Promise(resolve => {
-    const image = new Image();
-    image.decoding = "async";
-    let finished = false;
-    const finish = value => {
-      if(finished) return;
-      finished = true;
-      clearTimeout(timeout);
-      signal.removeEventListener("abort", abort);
-      image.onload = image.onerror = null;
-      resolve(value);
-    };
-    const abort = () => { finish(null); image.src = ""; };
-    const timeout = setTimeout(abort, 20000);
-    signal.addEventListener("abort", abort, {once:true});
-    image.onload = async () => {
-      try { if(image.decode) await image.decode(); } catch(error) {}
-      finish(signal.aborted ? null : image);
-    };
-    image.onerror = () => finish(null);
-    if(signal.aborted) abort();
-    else image.src = url;
-  });
 }
 
 function displaySatelliteFrame(index){
@@ -169,7 +151,7 @@ function displaySatelliteFrame(index){
     timeZone:"Europe/Lisbon", day:"2-digit", month:"2-digit",
     hour:"2-digit", minute:"2-digit", hour12:false
   }).format(frame.date);
-  setSatelliteStatus(SATELLITE_PRODUCTS[satelliteSelect.value].label + " · " + time +
+  setSatelliteStatus(SATELLITE_PRODUCTS[frame.product || satelliteSelect.value].label + " · " + time +
     " Lisbon · " + (index+1) + "/" + satelliteFrames.length +
     " · " + satelliteStepMs/60000 + "-min observations" +
     (satelliteMissingCount ? " · " + satelliteMissingCount + " unavailable images skipped" : "") +
@@ -190,82 +172,95 @@ function syncSatelliteToRadar(){
   for(let i=0; i<satelliteFrames.length; i++){
     if(satelliteFrames[i].date.getTime() <= time) index = i;
   }
-  // A gap is shown as missing imagery, rather than a stale/future match.
-  if(index >= 0 && index < satelliteFrames.length-1 &&
-    time-satelliteFrames[index].date.getTime() > satelliteStepMs*2){
-    index = -1;
-  }
   displaySatelliteFrame(index);
 }
 
 async function updateSatellite(force=false){
+  clearTimeout(satelliteMoveTimer);
   stopPlayback(false);
   const generation = ++satelliteGeneration;
   if(satelliteRequest) satelliteRequest.abort();
-  removeSatelliteLayer();
-  satelliteMissingCount = 0;
-  const product = SATELLITE_PRODUCTS[satelliteSelect.value];
+  const productKey = satelliteSelect.value;
+  const product = SATELLITE_PRODUCTS[productKey];
   satelliteLoading = !!product;
   satelliteOpacityControl.disabled = !product;
   updatePlaybackControls();
   if(!product){
+    removeSatelliteLayer();
     setSatelliteStatus("");
     updateFrameCounter();
     return;
   }
-  setSatelliteStatus("Loading " + product.label + " satellite history…");
+  const oldFrames = satelliteFrames;
+  const staged = [];
+  let committed = false;
+  let missing = 0;
+  setSatelliteStatus("Loading " + product.label + " history" +
+    (oldFrames.length ? " · previous imagery retained…" : "…"));
   const request = new AbortController();
   satelliteRequest = request;
-  const timeout = setTimeout(() => request.abort(), 15000);
+  const timeout = setTimeout(() => request.abort(),15000);
   try{
-    const catalogue = await getSatelliteCatalogue(request.signal, force);
+    const catalogue = await getSatelliteCatalogue(request.signal,force);
     clearTimeout(timeout);
     if(generation !== satelliteGeneration) return;
     const metadata = catalogue[product.layer];
     if(!metadata) throw new Error("No satellite observation metadata");
-    satelliteStepMs = metadata.stepMs;
     const geometry = satelliteGeometry();
     const newest = Date.parse(metadata.timestamp);
-    const hours = Number(historySelect.value);
-    const nativeStep = metadata.stepMs;
-    const oldest = newest-hours*3600000;
+    const oldest = newest-Number(historySelect.value)*3600000;
     const dates = [];
-    for(let time=newest; time>=oldest; time-=nativeStep){
-      dates.push(new Date(time));
-    }
+    for(let time=newest; time>=oldest; time-=metadata.stepMs) dates.push(new Date(time));
     const load = async date => {
-      const image = await loadSatelliteImage(satelliteImageURL(product, date, geometry), request.signal);
+      const image = await loadSatelliteImage(satelliteImageURL(product,date,geometry),request.signal);
       if(generation !== satelliteGeneration || request.signal.aborted) return;
-      if(!image){ satelliteMissingCount++; return; }
-      const overlay = L.imageOverlay(image, geometry.bounds, {
-        pane:"satellitePane", opacity:0, interactive:false,
+      if(!image){ missing++; return; }
+      const overlay = L.imageOverlay(image,geometry.bounds,{
+        pane:"satellitePane",opacity:0,interactive:false,
         attribution:'Satellite © <a href="https://www.eumetsat.int/">EUMETSAT</a>'
       }).addTo(map);
-      satelliteFrames.push({date, overlay, geometry});
-      satelliteFrames.sort((a,b) => a.date-b.date);
-      currentSatelliteIndex = satelliteFrames.length-1;
-      syncSatelliteToRadar();
-      setSatelliteStatus("Loading satellite " + satelliteFrames.length + "/" + dates.length + "…");
+      staged.push({date,overlay,geometry,product:productKey});
+      staged.sort((a,b) => a.date-b.date);
+      const radarTime = radarVisible && radarFrames.length ? radarFrames[currentFrameIndex].date.getTime() : Infinity;
+      if(!committed && staged.some(frame => frame.date.getTime() <= radarTime)){
+        // Keep the old scene until replacement imagery can actually be shown.
+        for(const frame of oldFrames) frame.overlay.remove();
+        satelliteFrames = staged;
+        satelliteStepMs = metadata.stepMs;
+        committed = true;
+      }
+      if(committed){
+        currentSatelliteIndex = satelliteFrames.length-1;
+        syncSatelliteToRadar();
+      }
+      setSatelliteStatus("Loading satellite " + staged.length + "/" + dates.length +
+        (oldFrames.length && !committed ? " · previous imagery retained" : "…"));
     };
-    // Show a recent image first, then preload history in bounded batches.
-    await load(dates[0]);
-    for(let i=1; i<dates.length && !request.signal.aborted; i+=3){
-      await Promise.all(dates.slice(i,i+3).map(load));
-    }
+    // Workers continue as soon as one image finishes; a slow request does not
+    // hold up an entire batch. Recent observations are queued first.
+    let next = 0;
+    await Promise.all(Array.from({length:Math.min(3,dates.length)},async () => {
+      while(next < dates.length && !request.signal.aborted){
+        await load(dates[next++]);
+      }
+    }));
     if(generation !== satelliteGeneration) return;
-    if(!satelliteFrames.length) throw new Error("No satellite images available");
+    if(!committed) throw new Error("No replacement satellite imagery at the selected time");
     satelliteLoading = false;
+    satelliteMissingCount = missing;
     syncSatelliteToRadar();
   }
   catch(error){
     if(generation === satelliteGeneration){
-      console.error("Satellite error:", error);
-      removeSatelliteLayer();
-      setSatelliteStatus("Satellite unavailable. Map and radar retained; try Refresh.", "error");
+      console.error("Satellite error:",error);
+      setSatelliteStatus(satelliteFrames.length
+        ? "Satellite update failed · previous imagery retained. Try Refresh."
+        : "Satellite unavailable. Map and radar retained; try Refresh.","error");
     }
   }
   finally{
     clearTimeout(timeout);
+    if(!committed) for(const frame of staged) frame.overlay.remove();
     if(generation === satelliteGeneration){
       satelliteLoading = false;
       updatePlaybackControls();
@@ -306,7 +301,7 @@ function initializeSatellite(){
     clearTimeout(satelliteMoveTimer);
     if(!SATELLITE_PRODUCTS[satelliteSelect.value]) return;
     const geometry = satelliteFrames[0] && satelliteFrames[0].geometry;
-    if(geometry && geometry.zoom === map.getZoom() && geometry.bounds.contains(map.getBounds())) return;
+    if(geometry && Math.abs(geometry.zoom-map.getZoom()) <= 1 && geometry.bounds.contains(map.getBounds())) return;
     stopPlayback(false);
     // The old rectangles remain registered while replacement coverage loads.
     satelliteMoveTimer = setTimeout(() => updateSatellite(), 400);

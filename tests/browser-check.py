@@ -113,6 +113,41 @@ try:
         # Restore initial view for subsequent product request, cancel the debounced reload.
         c.evaluate("map.setView([39.0867,-9.3777],7,{animate:false});clearTimeout(satelliteMoveTimer)")
     result=c.evaluate("""(async()=>{
+      const before=satelliteCacheStats.networkLoads;
+      const existing=new Set(satelliteImageCache.keys());
+      const originalFetch=window.fetch;
+      const requested=[];
+      window.fetch=(url,options)=>{
+        if(String(url).includes('request=GetMap'))requested.push(String(url));
+        return originalFetch(url,options);
+      };
+      satelliteCatalogueTime=Date.now();
+      try{await updateSatellite();}finally{window.fetch=originalFetch;}
+      await satelliteCacheWrites;
+      const cache=await openSatelliteCache();
+      const keys=cache?await cache.keys():[];
+      const memoryReuse=requested.every(url=>!existing.has(url));
+      const diskWritten=!!cache && keys.length>0;
+      // Drop only this test's memory entries; persistent entries must still work.
+      const sample=keys[0] && keys[0].url;
+      let diskReuse=false;
+      if(sample){
+        const entry=satelliteImageCache.get(sample);
+        if(entry){satelliteMemoryBytes-=entry.bytes;satelliteImageCache.delete(sample);URL.revokeObjectURL(entry.objectURL);}
+        const count=satelliteCacheStats.networkLoads;
+        const image=await loadSatelliteImage(sample,new AbortController().signal);
+        diskReuse=!!image && satelliteCacheStats.networkLoads===count && satelliteCacheStats.diskHits>0;
+      }
+      satelliteOpacityControl.value='100';satelliteOpacityControl.dispatchEvent(new Event('input'));
+      for(let i=0;i<50 && !mapFeatureLayer;i++)await new Promise(r=>setTimeout(r,100));
+      const pane=map.getPane('mapFeaturesPane');
+      const outlines=!!mapFeatureLayer && map.hasLayer(mapFeatureLayer) && pane.querySelectorAll('path').length>0 &&
+        Number(pane.style.zIndex)>Number(map.getPane('satellitePane').style.zIndex) && satelliteLayer.options.opacity===1;
+      return {memoryReuse,diskWritten,diskReuse,outlines,requests:requested.length,cacheStats:satelliteCacheStats,errors:testErrors};
+    })()""")
+    print('CACHE_AND_OUTLINES',result,flush=True)
+    assert all(result[k] for k in ['memoryReuse','diskWritten','diskReuse','outlines']) and not result['errors'],result
+    result=c.evaluate("""(async()=>{
       satelliteOpacityControl.value='35';satelliteOpacityControl.dispatchEvent(new Event('input'));
       radarOpacityControl.value='50';radarOpacityControl.dispatchEvent(new Event('input'));
       const opacity=satelliteOpacity===.35 && radarOpacity===.5 && satelliteLayer.options.opacity===.35;
@@ -149,28 +184,40 @@ try:
     result=c.evaluate("""(async()=>{
       const originalFetch=window.fetch;
       const originalLoader=loadSatelliteImage;
+      const catalogue={...satelliteCatalogue};
       try{
         satelliteSelect.value='hybrid';
-        window.fetch=async()=>{throw new Error('test offline');};
-        await updateSatellite(true);
-        const offline=satelliteStatus.dataset.state==='error' && !satelliteFrames.length && radarFrames.length>0;
+        satelliteCatalogueTime=Date.now();
+        await updateSatellite();
+        const prior=satelliteLayer;
+        const priorFrames=satelliteFrames;
+        let reject;
+        window.fetch=()=>new Promise((resolve,fail)=>{reject=fail;});
+        const pending=updateSatellite(true);
+        const visibleWhileLoading=satelliteLayer===prior && map.hasLayer(prior) && prior.options.opacity>0;
+        reject(new Error('test offline'));
+        await pending;
+        const retainedOnFailure=satelliteLayer===prior && satelliteFrames===priorFrames && map.hasLayer(prior) && satelliteStatus.dataset.state==='error';
         window.fetch=originalFetch;
+        satelliteSelect.value='map';await updateSatellite();
+        satelliteSelect.value='hybrid';
+        satelliteCatalogue=catalogue;satelliteCatalogueTime=Date.now();
         loadSatelliteImage=async()=>null;
         await updateSatellite();
         const imageFailure=satelliteStatus.dataset.state==='error' && !satelliteFrames.length;
         let complete;
         window.fetch=()=>new Promise(resolve=>{complete=resolve;});
-        const pending=updateSatellite(true);
+        const late=updateSatellite(true);
         satelliteSelect.value='map';await updateSatellite();
         complete(new Response('<WMS_Capabilities xmlns="http://www.opengis.net/wms"/>'));
-        await pending;
+        await late;
         const staleIgnored=!satelliteFrames.length && satelliteStatus.hidden;
-        return {offline,imageFailure,staleIgnored,errors:testErrors};
+        return {visibleWhileLoading,retainedOnFailure,imageFailure,staleIgnored,errors:testErrors};
       }finally{window.fetch=originalFetch;loadSatelliteImage=originalLoader;}
     })()""")
     print('RECOVERY',result,flush=True)
-    assert all(result[k] for k in ['offline','imageFailure','staleIgnored']) and not result['errors'],result
-    print('PASS: live history, opacity, standalone/combined animation, projection registration after pan/zoom, and recovery.',flush=True)
+    assert all(result[k] for k in ['visibleWhileLoading','retainedOnFailure','imageFailure','staleIgnored']) and not result['errors'],result
+    print('PASS: satellite cache, retained imagery, full-opacity outlines, playback, timestamp matching, and registration.',flush=True)
 
 finally:
     chrome.terminate()

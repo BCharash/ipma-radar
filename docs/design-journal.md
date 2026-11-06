@@ -953,6 +953,60 @@ not implement those fixes.
 | Private state | Pending. Scripts still share page scope. The current radar no longer has the older hard-coded beaches catalogue, but other generic names remain. |
 | Host-selected beach and lifecycle | Pending. No PraiasPortugal beach adapter, mount/resize/destroy contract, or host lifecycle integration is implemented. |
 
+## 6 November 2026 — Reuse satellite images and keep geographic context visible
+
+The user reported long satellite loads, apparent reversions to the street map,
+and repeated downloads. The prior implementation cleared its scene before a
+replacement was ready, used unrounded viewport BBOX values (new URLs after small
+moves), retained no application image cache, and hid satellite across long
+missing slots. This entry supersedes those loading/gap behaviors.
+
+Added `satelliteCache.js` with a compressed-image memory cache (16 MiB budget)
+and best-effort persistent Cache Storage (48 MiB / 96-entry limits). Keys include
+product, exact time, projection, BBOX, and dimensions. Fresh image elements are
+created from cached blob URLs so the same DOM element is not moved between old
+and replacement overlays. Storage denial/quota failure falls back to memory.
+Known failed URLs are deferred for 45 seconds; canceled requests are not marked
+failed. These caches do not constitute a complete offline app package.
+
+Scenes now use padded, grid-aligned projected bounds and are reused within
+coverage and a one-level zoom difference. The same bounds are used for WMS and
+Leaflet, preserving registration. Eight recent geometry definitions are retained
+for returning to an earlier scene. Smaller viewports request a maximum 768-pixel
+image side (1024 on larger viewports). Three loading workers queue recent frames
+first and continue individually, avoiding a slow request blocking an entire
+batch. Cold loads still depend on remote service latency and publication.
+
+Previous imagery remains until replacement images can actually be shown. Failed
+updates retain the previous image and report the failure separately. Choosing
+Map explicitly still removes satellite. Panning outside the old coverage can
+expose map areas until new coverage arrives; retained images are never stretched
+to a new geographic rectangle. Product labels follow the displayed frames.
+
+Radar/satellite sampling remains independent: selectable 5/10/15/20-minute radar
+steps, native 10-minute visible/Geo Colour and 15-minute infrared observations.
+Combined playback holds the latest earlier satellite observation across missing
+slots and labels its real time/lag. It never substitutes a future satellite
+observation. Satellite-only playback remains at native cadence.
+
+Bundled about 89 KB of Natural Earth coastline and country land-boundary vectors
+in `data/map-features.geojson`, clipped to longitude -40..15, latitude 25..55.
+`mapFeatures.js` draws a light halo and dark outlines in a pane above both radar
+and satellite, so they remain visible at 100% satellite opacity. This is local
+regional context without an API key or a new runtime map-provider dependency.
+Source revision, public-domain terms, and clipping method are in
+[map data](../data/README.md).
+
+Validation: live Chrome loaded seven hybrid observations and retained projection
+alignment (about 0.51 CSS pixels after pan/zoom). Reloading the same prepared
+scene issued zero GetMap requests, with seven memory-cache hits. Removing one
+memory entry and loading it again succeeded from persistent Cache Storage with
+no network request. Browser checks passed for visible outlines at 100% satellite
+opacity, imagery retained during pending and failed updates, standalone/combined
+animation, timestamp matching/lag labels, explicit Map selection, and stale
+request cancellation. No JavaScript errors were recorded. Real iPhone/Safari
+storage, rendering, and memory behavior still need acceptance checks.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite
