@@ -102,7 +102,23 @@ async function satelliteBlobURL(url, signal){
   return objectURL;
 }
 
-function loadSatelliteImage(url, signal){
+async function isSatelliteImageCached(url){
+  if(satelliteImageCache.has(url)) return true;
+  let timeout;
+  try{
+    return await Promise.race([
+      (async () => {
+        const cache = await openSatelliteCache();
+        return !!(cache && await cache.match(url));
+      })(),
+      new Promise(resolve => { timeout = setTimeout(() => resolve(false),500); })
+    ]);
+  }
+  catch(error){ return false; }
+  finally{ clearTimeout(timeout); }
+}
+
+function loadSatelliteImage(url, signal, timeoutMs=20000){
   if(Date.now() < (satelliteFailedUntil.get(url) || 0)){
     satelliteCacheStats.failureSkips++;
     return Promise.resolve(null);
@@ -128,7 +144,7 @@ function loadSatelliteImage(url, signal){
       resolve(value);
     };
     const abort = () => { request.abort(); finish(null); image.removeAttribute("src"); };
-    const timeout = setTimeout(abort, 20000);
+    const timeout = setTimeout(abort, timeoutMs);
     signal.addEventListener("abort", abort, {once:true});
     image.onload = async () => {
       try { if(image.decode) await image.decode(); } catch(error) { finish(null); return; }

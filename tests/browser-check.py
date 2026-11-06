@@ -76,7 +76,7 @@ try:
           await updateSatellite(true);
           return {mode:satelliteSelect.value,state:satelliteStatus.dataset.state,status:satelliteStatus.textContent,
             frames:satelliteFrames.length,loading:satelliteLoading,errors:testErrors,
-            satelliteOpacity:satelliteOpacity,radarFrames:radarFrames.length};
+            satelliteOpacity:satelliteOpacity,radarFrames:radarFrames.length,timings:satelliteLoadTimings};
         })()""" % json.dumps(mode))
         print('SATELLITE', result, flush=True)
         assert result['state'] == 'ready' and result['frames'] > 1 and not result['errors'], result
@@ -112,6 +112,42 @@ try:
         assert result['maxError'] < 2 and result['crs']=='EPSG:3857' and result['bbox']==result['expected'], result
         # Restore initial view for subsequent product request, cancel the debounced reload.
         c.evaluate("map.setView([39.0867,-9.3777],7,{animate:false});clearTimeout(satelliteMoveTimer)")
+    result=c.evaluate("""(async()=>{
+      const originalLoader=loadSatelliteImage;
+      const originalCacheCheck=isSatelliteImageCached;
+      const savedIndex=currentFrameIndex;
+      const calls=[];
+      let release;
+      try{
+        setVisibleFrame(0);
+        const radarTime=radarFrames[0].date.getTime();
+        satelliteCatalogueTime=Date.now();
+        isSatelliteImageCached=async()=>false;
+        const canvas=document.createElement('canvas');canvas.width=2;canvas.height=2;
+        canvas.getContext('2d').fillRect(0,0,2,2);
+        const source=canvas.toDataURL();
+        const image=async()=>{const img=new Image();img.src=source;await img.decode();return img;};
+        loadSatelliteImage=async(url,signal,timeout)=>{
+          const query=new URL(url).searchParams;
+          calls.push({time:Date.parse(query.get('time')),size:Math.max(Number(query.get('width')),Number(query.get('height'))),
+            previewVisible:!!satelliteLayer && satelliteFrames.some(f=>f.preview && f.overlay===satelliteLayer)});
+          if(calls.length===1)await new Promise(resolve=>{release=resolve;});
+          return image();
+        };
+        const pending=updateSatellite();
+        for(let i=0;i<100 && !release;i++)await new Promise(r=>setTimeout(r,5));
+        const firstOnly=calls.length===1;
+        const matchingFirst=calls[0].time<=radarTime;
+        const smallFirst=calls[0].size<=256;
+        release();await pending;
+        const previewBeforeHistory=!!calls[1] && calls[1].previewVisible;
+        const uniqueFrames=new Set(satelliteFrames.map(f=>f.date.getTime())).size===satelliteFrames.length;
+        const refined=satelliteFrames.every(f=>!f.preview);
+        return {firstOnly,matchingFirst,smallFirst,previewBeforeHistory,uniqueFrames,refined,errors:testErrors};
+      }finally{loadSatelliteImage=originalLoader;isSatelliteImageCached=originalCacheCheck;setVisibleFrame(savedIndex);}
+    })()""")
+    print('FIRST_IMAGE_PRIORITY',result,flush=True)
+    assert all(result[k] for k in ['firstOnly','matchingFirst','smallFirst','previewBeforeHistory','uniqueFrames','refined']) and not result['errors'],result
     result=c.evaluate("""(async()=>{
       const before=satelliteCacheStats.networkLoads;
       const existing=new Set(satelliteImageCache.keys());
