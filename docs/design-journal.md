@@ -1271,6 +1271,44 @@ regional Leaflet/vector errors measured about 0.23/0.44 pixels. Provider fixture
 mobile-width overflow checks and all five local connector tests passed. No real
 Meteomatics image was fetched. Physical iPhone/Safari remains unverified.
 
+## 6 November 2026 — Incorporate GeoColour vector rendering into ipma-radar
+
+The user approved bringing the lab's map rendering and GeoColour into the main
+application while explicitly retaining the existing map for Map view. The
+existing `hybrid` product key now appears as **GeoColour satellite**; its EUMETSAT
+product, observation times and cache keys are unchanged. Map remains the default.
+
+Added `src/js/geoColourMap.js` with lazy MapLibre 5.6.2 / Leaflet-bridge 0.1.4
+loading and the OpenFreeMap Liberty vector style. To preserve the working movie
+and rain filtering, weather frames remain on their existing Leaflet overlays.
+Two vector panes place base fills below satellite and transparent road/name/
+boundary context above satellite and radar. Context opacity uses the lab's 85%
+setting and preserves top-level style zoom expressions. Original radar bounds,
+Low/High batch switching, progressive coverage/history and visibility toggles
+remain on their established paths.
+
+The original OSM tile-layer instance is restored for Map/Visible/Infrared, at the
+same map location and zoom. GeoColour exit releases its GL layers; source style
+and library downloads can be reused. Raster map zoom 19 remains explicit when
+its tile layer is detached. Public-source attributions change with the active
+renderer without accumulating duplicate credits. Natural Earth outlines remain
+available for standard/fallback rendering. Detailed-map loading has an independent
+floating status, avoiding changes to map height and satellite loading messages.
+WebGL or map-service failure retains the original map and active weather layers.
+
+Validation includes real satellite/radar data, rendered GL text, pane ordering,
+full-opacity context, readable footer/credits, original Map restoration and
+forced-WebGL-failure recovery, alongside existing progressive playback, cache,
+quality, missing/stale image, opacity and registration checks. Physical iPhone/
+Safari performance with two GL canvases remains a device acceptance check.
+Final checks passed all three satellite views and the existing playback/cache/
+quality/recovery suite without JavaScript errors. A close Lisbon street view
+rendered real street names and measured about 0.5 CSS-pixel vector placement
+error; satellite placement remained about 0.51 pixels. A 390-pixel viewport
+screenshot confirmed readable labels and footer credits at 100% satellite opacity.
+Meteomatics remains a lab-only connector awaiting account access; no paid source
+or key was added to the production app.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite

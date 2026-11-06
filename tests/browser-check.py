@@ -67,6 +67,7 @@ try:
         if c.evaluate('typeof initializeSatellite === "function" && typeof radarFrames !== "undefined" && !!map'): break
         time.sleep(.2)
     print('STARTUP', c.evaluate('({errors:testErrors, overflow:document.documentElement.scrollWidth>innerWidth})'), flush=True)
+    assert c.evaluate('map.hasLayer(baseMapLayer) && !geoColourMapState.ready && typeof maplibregl === "undefined"')
     result=c.evaluate("(async()=>{historySelect.value='1'; await rebuildRadar();return {frames:radarFrames.length,errors:testErrors};})()")
     print('RADAR',result,flush=True)
     assert result['frames'] > 1 and not result['errors']
@@ -81,6 +82,39 @@ try:
         print('SATELLITE', result, flush=True)
         assert result['state'] == 'ready' and result['frames'] > 1 and not result['errors'], result
         if mode == 'hybrid':
+            result=c.evaluate("""(async()=>{
+              await geoColourMapState.loading;
+              const ready=geoColourMapState.ready && !map.hasLayer(baseMapLayer);
+              const gl=geoColourMapState.layers[1]?.getMaplibreMap();
+              for(let i=0;i<200 && gl && !gl.areTilesLoaded();i++)await new Promise(resolve=>setTimeout(resolve,100));
+              const textLayers=gl?.getStyle().layers.filter(layer=>layer.type==='symbol' && layer.layout?.['text-field']).map(layer=>layer.id);
+              const text=!!gl && gl.queryRenderedFeatures(undefined,{layers:textLayers}).length>0;
+              const layersAbove=+map.getPane('geoColourContextPane')?.style.zIndex>+map.getPane('overlayPane').style.zIndex &&
+                +map.getPane('geoColourBasePane')?.style.zIndex<+map.getPane('satellitePane').style.zIndex;
+              const beforeTime=playbackTime,beforeFrame=satelliteLayer;
+              satelliteOpacityControl.value='100';satelliteOpacityControl.dispatchEvent(new Event('input'));
+              const independentOpacity=satelliteLayer.options.opacity===1 && geoColourMapState.ready && playbackTime===beforeTime && satelliteLayer===beforeFrame;
+              const footer=document.getElementById('frameCounter').getBoundingClientRect(),credits=map.attributionControl.getContainer().getBoundingClientRect();
+              const clearCredits=footer.bottom<=credits.top;
+              const savedView={center:map.getCenter(),zoom:map.getZoom()};
+              map.setView([38.72,-9.14],17,{animate:false});clearTimeout(satelliteMoveTimer);
+              await new Promise(resolve=>setTimeout(resolve,600));
+              for(let i=0;i<150 && !gl.areTilesLoaded();i++)await new Promise(resolve=>setTimeout(resolve,100));
+              const streetNames=gl.queryRenderedFeatures().some(feature=>feature.sourceLayer==='transportation_name' && feature.properties.name);
+              const rect=gl.getCanvas().getBoundingClientRect(),parent=map.getContainer().getBoundingClientRect();
+              const vectorError=Math.max(...[map.getBounds().getSouthWest(),map.getBounds().getNorthEast(),map.getCenter()].map(point=>{
+                const projected=gl.project([point.lng,point.lat]);
+                return map.latLngToContainerPoint(point).distanceTo(L.point(rect.left-parent.left+projected.x,rect.top-parent.top+projected.y));
+              }));
+              const zoomRegistration=vectorError<2 && map.getMaxZoom()===19 && playbackTime===beforeTime;
+              map.setView(savedView.center,savedView.zoom,{animate:false});clearTimeout(satelliteMoveTimer);
+              await new Promise(resolve=>setTimeout(resolve,250));
+              const attribution=map.attributionControl.getContainer().textContent;
+              const correctAttribution=attribution.includes('OpenFreeMap') && attribution.includes('OpenMapTiles') && attribution.includes('OpenStreetMap') && !attribution.includes('Natural Earth');
+              return {ready,text,layersAbove,independentOpacity,clearCredits,correctAttribution,streetNames,zoomRegistration,vectorError,mapError:geoColourMapState.error,vectorErrors:geoColourMapState.errors,errors:testErrors};
+            })()""")
+            print('GEOCOLOUR_MAP',result,flush=True)
+            assert all(result[key] for key in ['ready','text','layersAbove','independentOpacity','clearCredits','correctAttribution','streetNames','zoomRegistration']) and not result['vectorErrors'] and not result['errors'],result
             shot=c.call('Page.captureScreenshot',{'format':'png'})
             pathlib.Path('/private/tmp/ipma-satellite-mobile.png').write_bytes(base64.b64decode(shot['data']))
         result=c.evaluate("""(async()=>{
@@ -317,7 +351,26 @@ try:
     })()""")
     print('RECOVERY',result,flush=True)
     assert all(result[k] for k in ['visibleWhileLoading','retainedOnFailure','imageFailure','staleIgnored']) and not result['errors'],result
-    print('PASS: satellite cache, retained imagery, full-opacity outlines, playback, timestamp matching, and registration.',flush=True)
+    result=c.evaluate("""(async()=>{
+      stopPlayback(false);cancelSatelliteRefinement();
+      const saved=geoColourWebGLAvailable;
+      satelliteSelect.value='map';await updateSatellite();
+      const originalMap=baseMapLayer,center=map.getCenter(),zoom=map.getZoom();
+      const standardRestored=map.hasLayer(originalMap) && !geoColourMapState.layers.length && map.getPane('mapFeaturesPane').style.display!== 'none' && !map.attributionControl.getContainer().textContent.includes('OpenFreeMap');
+      try{
+        geoColourWebGLAvailable=()=>false;
+        await setGeoColourMapEnabled(true);
+        const fallback=map.hasLayer(originalMap) && !geoColourMapState.ready && document.getElementById('mapRenderingStatus').textContent.includes('standard map retained');
+        await setGeoColourMapEnabled(false);geoColourWebGLAvailable=saved;
+        await setGeoColourMapEnabled(true);
+        const recovered=geoColourMapState.ready && map.getZoom()===zoom && map.getCenter().distanceTo(center)<.1;
+        await setGeoColourMapEnabled(false);
+        return {standardRestored,fallback,recovered,originalMapRetained:baseMapLayer===originalMap && map.hasLayer(originalMap),errors:testErrors};
+      }finally{geoColourWebGLAvailable=saved;await setGeoColourMapEnabled(false);}
+    })()""")
+    print('MAP_SWITCH_AND_FALLBACK',result,flush=True)
+    assert all(value for key,value in result.items() if key!='errors') and not result['errors'],result
+    print('PASS: satellite cache, GeoColour vector map, fallback, playback, timestamp matching, and registration.',flush=True)
 
 finally:
     chrome.terminate()

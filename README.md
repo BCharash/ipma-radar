@@ -8,14 +8,14 @@ separate geolocation diagnostic page; opening it runs only the location test.
 
 ## Satellite and radar
 
-Choose **Map**, **Visible (daylight)**, **Infrared satellite**, or **Hybrid
+Choose **Map**, **Visible (daylight)**, **Infrared satellite**, or **GeoColour
 satellite** in the View selector. Toggle **Rain radar** independently. Map with
 radar remains the default. Separate **Satellite** and **Radar** opacity sliders
 let the street map show through; satellite starts at 60% opacity.
 
 Satellite imagery comes from EUMETSAT's public EUMETView WMS and requires no API
 key, account, or proxy. Visible uses MTG VIS0.6, infrared uses MSG IR10.8, and
-hybrid uses MTG Geo Colour. Visible imagery needs daylight; hybrid is a provider
+GeoColour uses MTG Geo Colour. Visible imagery needs daylight; GeoColour is a provider
 composite. IPMA's own satellite routes were investigated; the provider decision
 and request results are recorded in the design journal.
 
@@ -60,9 +60,24 @@ History preparation stops after 60 seconds with partial results retained and an
 incomplete-history message; Refresh retries missing data. This is not a
 preprocessed satellite tile service and cannot guarantee instant loading.
 
-Local coastline and country-border outlines remain above both satellite and
-radar, including at 100% imagery opacity. They cover Portugal and the nearby
-Atlantic/western Europe region; see [map data](data/README.md).
+**GeoColour satellite** uses the lab-tested OpenFreeMap vector map: detailed
+roads, place/street names and boundaries remain above satellite and radar even
+at 100% image opacity. MapLibre loads only when this view is selected. The original
+OpenStreetMap raster map remains the default **Map** view, and is also used with
+Visible/Infrared. Switching back restores that same map at the current location
+and zoom, releasing the vector renderers. If detailed-map loading or WebGL fails,
+GeoColour and radar remain available over the standard map with a status message.
+No key or account is required.
+
+GeoColour includes land/ocean imagery as well as clouds; lowering satellite
+opacity reveals the vector basemap beneath it. Weather frames keep their
+existing Leaflet placement, cache and animation path. Two vector canvas panes
+render base surfaces below imagery and context above it. Cartographic detail
+grows with zoom; this does not change satellite resolution or radar coverage.
+
+Outside GeoColour mode, local coastline/country-border outlines remain above
+imagery, covering Portugal and nearby Atlantic/western Europe. See
+[map data](data/README.md).
 
 Satellite registration uses an explicit EPSG:3857 WMS bounding box and the exact
 same geographic corners for Leaflet rendering. Radar retains IPMA's original
@@ -116,6 +131,7 @@ current file layout.
 | `src/js/satellite.js` | Public satellite catalogue, registered history images, timestamps, opacity, and radar toggle |
 | `src/js/satelliteCache.js` | Bounded memory/persistent satellite image caches and image loading |
 | `src/js/satelliteDetail.js` | Complete High-resolution batch staging and atomic sequence switching |
+| `src/js/geoColourMap.js` | GeoColour-only vector cartography, lazy dependency loading, fallback and original-map restoration |
 | `src/js/mapFeatures.js` | Coastline and country-border outlines above the imagery |
 | `src/js/app.js` | Shared timeline state, loading batches, refresh coordination, event binding, and startup |
 

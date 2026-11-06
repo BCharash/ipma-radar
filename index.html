@@ -150,7 +150,7 @@
     <option value="map">Map</option>
     <option value="visible">Visible (daylight)</option>
     <option value="infrared">Infrared satellite</option>
-    <option value="hybrid">Hybrid satellite</option>
+    <option value="hybrid">GeoColour satellite</option>
   </select>
   <select id="satelliteQuality" disabled aria-label="Satellite resolution" title="High waits for a complete matching sequence">
     <option value="low">Low res</option>
@@ -161,6 +161,7 @@
     Rain radar
   </label>
 </div>
+<div id="mapRenderingStatus" role="status" aria-live="polite" hidden></div>
 <div id="satelliteStatus" role="status" aria-live="polite" hidden></div>
 <div id="opacityControls">
   <label for="satelliteOpacity">Satellite</label>
@@ -236,6 +237,7 @@
 <script src="src/js/radarLocation.js"></script>
 <script src="src/js/radarPlayback.js"></script>
 <script src="src/js/radarControls.js"></script>
+<script src="src/js/geoColourMap.js"></script>
 <script src="src/js/mapFeatures.js"></script>
 <script src="src/js/satelliteCache.js"></script>
 <script src="src/js/satellite.js"></script>

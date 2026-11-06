@@ -25,6 +25,7 @@ const DEFAULT_LOCATION = {
 };
 
 let map = null;
+let baseMapLayer = null;
 
 let radarOverlays = [];
 
@@ -64,13 +65,14 @@ function initializeMap(){
     L.map(
       "map",
       {
+        maxZoom:19,
         zoomAnimation:false,
         fadeAnimation:false,
         markerZoomAnimation:false
       }
     );
 
-  L.tileLayer(
+  baseMapLayer = L.tileLayer(
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     {
       maxZoom:19,

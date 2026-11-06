@@ -9,7 +9,7 @@ const SATELLITE_WMS_URL = "https://view.eumetsat.int/geoserver/wms";
 const SATELLITE_PRODUCTS = {
   visible:{layer:"mtg_fd:vis06_hrfi", label:"Visible (daylight)"},
   infrared:{layer:"msg_fes:ir108", label:"Infrared"},
-  hybrid:{layer:"mtg_fd:rgb_geocolour", label:"Hybrid (Geo Colour)"}
+  hybrid:{layer:"mtg_fd:rgb_geocolour", label:"GeoColour"}
 };
 let satelliteLayer = null;
 let satelliteFrames = [];
@@ -197,6 +197,7 @@ async function updateSatellite(force=false){
   if(satelliteRequest) satelliteRequest.abort();
   const productKey = satelliteSelect.value;
   const product = SATELLITE_PRODUCTS[productKey];
+  setGeoColourMapEnabled(productKey === "hybrid");
   if(satelliteFrames.some(frame => frame.product !== productKey)) stopPlayback(false);
   satelliteQualityActive = "low";
   satelliteLoading = !!product;

@@ -55,6 +55,27 @@ in a separate pane at z-index 460, above radar and satellite. Their geometry and
 opacity are independent of imagery sliders. See [map data](../data/README.md)
 for coverage, generalization, and source information.
 
+## GeoColour vector cartography
+
+The main application now uses OpenFreeMap/MapLibre cartography in GeoColour mode.
+The weather images themselves remain unchanged Leaflet ImageOverlays, with the
+same EPSG:3857 WMS BBOX/corners, opacity, rain filter and playback scheduling.
+No frame is uploaded to a GL image source or substituted by the map renderer.
+
+The vector style is split into two Leaflet-managed GL panes: base surface fills
+at z-index 210, below satellite (250), and transparent line/symbol context at
+470, above radar (400) and radar ranges (450), below location markers (600).
+Both use the same Leaflet centre/zoom through the tested MapLibre bridge, with
+zero canvas padding to avoid fractional canvas dimensions. The map's original
+maximum zoom of 19 is explicit even while its raster tile layer is detached.
+
+The original OSM tile layer is retained and restored for Map/Visible/Infrared.
+Natural Earth outlines are hidden only after detailed cartography is ready and
+restored on fallback or exit. Switching rendering paths does not move the map,
+change IPMA bounds, or change the weather clock. Vector dependencies load lazily;
+Map view does not require WebGL. Failed detailed-map startup retains the original
+map and weather layers, with an independent status message.
+
 ## Time registration
 
 Each satellite request includes an explicit observation timestamp from the

@@ -17,7 +17,7 @@ async function initializeMapFeatures(){
         style:feature => ({color:"#263238", weight:1.1, opacity:.9, fill:false,
           dashArray:feature.properties.kind === "border" ? "4 3" : null})})
     ]).addTo(map);
-    map.attributionControl.addAttribution('Outlines: <a href="https://www.naturalearthdata.com/">Natural Earth</a>');
+    refreshGeoColourMapVisibility();
   }
   catch(error){
     console.error("Map outline error:", error);
