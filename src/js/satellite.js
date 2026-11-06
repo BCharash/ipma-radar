@@ -5,6 +5,7 @@
  * Radar and satellite keep separate timestamps; no future satellite is paired
  * with a historical radar frame. Low-resolution history loads progressively.
  */
+const SATELLITE_CONCURRENT_REQUESTS = 4;
 const SATELLITE_WMS_URL = "https://view.eumetsat.int/geoserver/wms";
 const SATELLITE_PRODUCTS = {
   visible:{layer:"mtg_fd:vis06_hrfi", label:"Visible (daylight)"},
@@ -312,10 +313,10 @@ async function updateSatellite(force=false,coverageOnly=false){
         : "") + "Loading animation " + staged.length + "/" + dates.length +
         (oldFrames.length && !committed ? " · previous imagery retained" : "…"));
     };
-    // Request newest to oldest. Two workers let an earlier image recover
+    // Request newest to oldest. Four workers let earlier images recover
     // from a slow or unavailable latest observation.
     let next = 0;
-    await Promise.all(Array.from({length:Math.min(2,dates.length)},async () => {
+    await Promise.all(Array.from({length:Math.min(SATELLITE_CONCURRENT_REQUESTS,dates.length)},async () => {
       while(next < dates.length && !request.signal.aborted){
         const date = dates[next++];
         await load(date,geometry,true,15000);

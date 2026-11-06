@@ -46,7 +46,7 @@ async function refineSatelliteFrame(){
   let completed = 0;
   let next = frames.length-1;
   try{
-    await Promise.all(Array.from({length:Math.min(2,frames.length)},async () => {
+    await Promise.all(Array.from({length:Math.min(SATELLITE_CONCURRENT_REQUESTS,frames.length)},async () => {
       while(next >= 0 && !request.signal.aborted){
         const frame = frames[next--];
         if(!frame.detail || frame.detail.geometry.bbox.join() !== geometry.bbox.join()){

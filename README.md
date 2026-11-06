@@ -70,11 +70,15 @@ Radar images have a session-memory cache. Map tiles, fonts and vector styles use
 normal browser/provider caching; this is not a complete offline cache. A wider
 uncached region needs new images because its geographic bounds differ.
 
-Cold loads request only the relevant satellite-family catalogue, then two small
-registered images at a time, newest to oldest. Failed observations are skipped.
+Cold loads request only the relevant satellite-family catalogue, then four small
+registered images at a time, newest to oldest. High-resolution preparation also
+uses four workers. Failed observations are skipped.
 History preparation stops after 60 seconds with partial results retained and an
 incomplete-history message; Refresh retries missing data. This is not a
 preprocessed satellite tile service and cannot guarantee instant loading.
+
+See the [prepared GeoColour feed investigation](docs/geocolour-feed-investigation.md)
+for measured delivery results and the remaining obstacles to replacing WMS.
 
 **GeoColour satellite** uses the lab-tested OpenFreeMap vector map: detailed
 roads, place/street names and boundaries remain above satellite and radar even

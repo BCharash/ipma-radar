@@ -1347,6 +1347,22 @@ JavaScript errors. A 390-pixel viewport screenshot showed both readouts fitting
 beside each other with image dimensions and clear of attribution. Physical iPhone/
 Safari validation remains outstanding.
 
+## 6 November 2026 — Four satellite workers and prepared-feed verification
+
+Raised the shared Low history/coverage and High preparation request limit from
+two to four. The earlier fixed-view eight-image comparison measured about 31%
+less elapsed time with four workers; this is a measured sample, not a guarantee.
+The quick Chrome suite passed loading, quality switching, coverage staging,
+cache reuse, radar-toggle playback, registration and map fallback checks.
+
+Verified CIRA SLIDER's public prepared Meteosat-12 GeoColour catalogue and PNG
+tiles. At approximately 17:00 UTC its latest listed scan was 15:00, versus 16:40
+for EUMETView. Its native satellite projection requires reprojection, and direct
+browser catalogue/pixel fetches failed across origins. Public redistribution/API
+terms remain unverified. Production therefore retains EUMETView. Full evidence,
+timings and source links are in the
+[prepared-feed investigation](geocolour-feed-investigation.md).
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite
