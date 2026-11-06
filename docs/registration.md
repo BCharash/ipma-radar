@@ -40,14 +40,22 @@ reused within their coverage and a one-level zoom difference. This keeps image
 URLs stable for caching. All overview history uses a maximum image side of 256
 pixels. Leaflet keeps those images registered during movement. Moving beyond a
 reusable scene automatically requests expanded coverage newest to oldest;
-existing observations retain their images until same-time replacements arrive.
+the entire old movie retains its registered images until all same-time
+replacements are ready. The new collection replaces it at a pass boundary, or
+while paused. Missing replacement frames retain the entire old collection with
+a retry message. No old-extent frame is interleaved with a new-extent frame.
+If zoom changes during initial history loading, the pending full history roster
+is retained rather than truncating the movie to the few images already loaded.
 
 High resolution uses the same timestamps and projected rectangle at 512 pixels
 on small viewports or 768 otherwise. The entire High batch must be ready before
 it replaces Low at a playback boundary (or while paused). No individual detailed
 frames enter a Low movie. Both image sizes are cached independently by their
-complete WMS request URL. A new coverage request uses Low while the matching High
-batch is prepared. Geographic placement and requested observation time remain
+complete WMS request URL. A new coverage batch becomes available in Low first, then the matching High
+batch is prepared. The existing movie retains its current quality while the
+new coverage is loading. The bottom readout reports the displayed overlay’s
+actual Low/High quality and decoded width × height, rather than just the requested
+selector setting. Geographic placement and requested observation time remain
 explicit for every overlay, at either size.
 
 Local Natural Earth coastlines and country borders are projected by Leaflet

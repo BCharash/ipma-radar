@@ -223,7 +223,7 @@ async function initialize(){
     silent:true
   });
 
-  await rebuildRadar();
+  await Promise.all([rebuildRadar(),updateSatellite()]);
 }
 
 

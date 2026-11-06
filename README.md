@@ -9,8 +9,8 @@ separate geolocation diagnostic page; opening it runs only the location test.
 ## Satellite and radar
 
 Choose **Map**, **Visible (daylight)**, **Infrared satellite**, or **GeoColour
-satellite** in the View selector. Toggle **Rain radar** independently. Map with
-radar remains the default. Separate **Satellite** and **Radar** opacity sliders
+satellite** in the View selector. Toggle **Rain radar** independently. GeoColour
+with radar is the default, and both sources start loading together. Separate **Satellite** and **Radar** opacity sliders
 let the street map show through; satellite starts at 60% opacity.
 
 Satellite imagery comes from EUMETSAT's public EUMETView WMS and requires no API
@@ -42,17 +42,33 @@ side). High prepares the entire matching movie (512 pixels on a small viewport,
 768 otherwise), showing progress while Low continues. It switches all frames
 together at the next playback boundary, or immediately while paused. An
 incomplete High batch leaves Low in use. Switching back to Low is immediate;
-both resolutions are cached. Pausing retains the current map view and clock.
+both resolutions are cached. Beside the satellite frame count, the readout shows
+the displayed **Low/High** image and its actual decoded pixel dimensions, such as
+**Low 154×256 px**. It reports what is on screen, even if High is selected while
+its replacement sequence is still loading. Pixel dimensions are not native
+ground resolution. Pausing retains the current map view and clock.
 
 **Refresh** updates both sources. Zoom/pan reprojects the existing imagery
 immediately. If the prepared scene no longer fits the viewport/zoom, the app
-automatically fetches coverage newest to oldest. Each observation retains its
-old registered image until its same-time replacement arrives. Small movements
+automatically fetches coverage newest to oldest. When the prepared region changes,
+the entire current movie stays intact while a complete replacement set loads.
+The replacement switches together at a playback boundary, or immediately while
+paused, preserving the UTC clock. It does not mix narrow old rectangles with
+expanded frames within a pass. A narrower rectangle can remain visible temporarily
+while loading; if any replacement is missing, previous coverage stays in use and
+Refresh retries. Initial history still loads progressively. Small movements
 within a reusable padded scene require no new coverage. Selecting High prepares
 a complete matching High batch for the new scene after Low history loads.
 Successful images are reused from a bounded memory cache and browser Cache
 Storage (when available), including across page reloads. Known failed requests
 are briefly deferred. The first uncached visit still depends on the provider.
+
+Caching is bounded: satellite PNGs for both resolutions and geographic scenes
+use up to 16 MiB of memory and 48 MiB / 96 images in browser Cache Storage when
+available. Old entries can be evicted; storage restrictions fall back to memory.
+Radar images have a session-memory cache. Map tiles, fonts and vector styles use
+normal browser/provider caching; this is not a complete offline cache. A wider
+uncached region needs new images because its geographic bounds differ.
 
 Cold loads request only the relevant satellite-family catalogue, then two small
 registered images at a time, newest to oldest. Failed observations are skipped.
@@ -63,7 +79,7 @@ preprocessed satellite tile service and cannot guarantee instant loading.
 **GeoColour satellite** uses the lab-tested OpenFreeMap vector map: detailed
 roads, place/street names and boundaries remain above satellite and radar even
 at 100% image opacity. MapLibre loads only when this view is selected. The original
-OpenStreetMap raster map remains the default **Map** view, and is also used with
+OpenStreetMap raster map remains available as **Map** view, and is also used with
 Visible/Infrared. Switching back restores that same map at the current location
 and zoom, releasing the vector renderers. If detailed-map loading or WebGL fails,
 GeoColour and radar remain available over the standard map with a status message.
@@ -130,6 +146,7 @@ current file layout.
 | `src/js/radarControls.js` | Control elements, status messages, frame times, and control presentation |
 | `src/js/satellite.js` | Public satellite catalogue, registered history images, timestamps, opacity, and radar toggle |
 | `src/js/satelliteCache.js` | Bounded memory/persistent satellite image caches and image loading |
+| `src/js/satelliteCoverage.js` | Complete viewport-replacement staging, boundary switching and preservation of observation times |
 | `src/js/satelliteDetail.js` | Complete High-resolution batch staging and atomic sequence switching |
 | `src/js/geoColourMap.js` | GeoColour-only vector cartography, lazy dependency loading, fallback and original-map restoration |
 | `src/js/mapFeatures.js` | Coastline and country-border outlines above the imagery |

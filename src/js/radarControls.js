@@ -98,7 +98,17 @@ function updateFrameCounter(){
   satelliteReadout.hidden = !SATELLITE_PRODUCTS[satelliteSelect.value] || !satelliteFrames.length;
   if(!satelliteReadout.hidden){
     const index = satelliteFrames.findIndex(frame => frame.overlay === satelliteLayer || frame.detail?.overlay === satelliteLayer);
-    satelliteReadout.textContent = "Satellite " + (index < 0 ? "—" : index+1) + "/" + satelliteFrames.length +
+    let resolution="";
+    if(index>=0){
+      const frame=satelliteFrames[index];
+      const detailed=frame.detail?.overlay===satelliteLayer;
+      const geometry=detailed ? frame.detail.geometry : frame.geometry;
+      const image=satelliteLayer.getElement();
+      const width=image.naturalWidth || geometry.width,height=image.naturalHeight || geometry.height;
+      resolution=" · " + (detailed ? "High " : "Low ") + width + "×" + height + " px";
+      satelliteReadout.title="Displayed image size in pixels; not native ground resolution.";
+    }
+    satelliteReadout.textContent = "Satellite " + (index < 0 ? "—" : index+1) + "/" + satelliteFrames.length + resolution +
       (index < 0 ? "" : " · " + clock(satelliteFrames[index].date));
   }
   frameCounter.style.display = radarReadout.hidden && satelliteReadout.hidden ? "none" : "flex";

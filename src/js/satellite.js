@@ -25,6 +25,8 @@ let satelliteOpacity = 0.6;
 let satelliteMoveTimer = null;
 let satelliteHistoryIncomplete = false;
 let satelliteLoadTimings = {};
+let satelliteRequestedDates = [];
+let satelliteRequestedProduct = null;
 const satelliteScenes = [];
 
 const satelliteSelect = document.getElementById("satelliteSelect");
@@ -164,10 +166,11 @@ function displaySatelliteFrame(index){
     return;
   }
   currentSatelliteIndex = index;
-  if(satelliteLoading || satelliteDetailRequest || satelliteQualityPending) return;
+  if(satelliteLoading || satelliteDetailRequest || satelliteQualityPending || satelliteCoveragePending) return;
   setSatelliteStatus(SATELLITE_PRODUCTS[frame.product || satelliteSelect.value].label +
     " · " + satelliteStepMs/60000 + "-min observations" +
     (frame.detail && selected === frame.detail.overlay ? " · high resolution" : " · low resolution") +
+    (satelliteCoverageMessage ? " · " + satelliteCoverageMessage : "") +
     (satelliteHistoryIncomplete ? " · history incomplete; Refresh to retry" : "") +
     (satelliteMissingCount ? " · " + satelliteMissingCount + " unavailable images skipped" : "") +
     (playbackTime !== null && playbackTime-frame.date.getTime() >= satelliteStepMs
@@ -189,17 +192,22 @@ function syncSatelliteToRadar(time=playbackTime){
   displaySatelliteFrame(index);
 }
 
-async function updateSatellite(force=false){
+async function updateSatellite(force=false,coverageOnly=false){
   const started = performance.now();
   clearTimeout(satelliteMoveTimer);
+  const previousLoading=satelliteLoading;
+  const previousDates=satelliteRequestedProduct===satelliteSelect.value ? satelliteRequestedDates.slice() : [];
+  const queuedDates=satelliteCoveragePending?.product===satelliteSelect.value
+    ? satelliteCoveragePending.frames.map(frame=>frame.date) : [];
   cancelSatelliteRefinement();
+  discardSatelliteCoverage();
+  satelliteCoverageMessage="";
   const generation = ++satelliteGeneration;
   if(satelliteRequest) satelliteRequest.abort();
   const productKey = satelliteSelect.value;
   const product = SATELLITE_PRODUCTS[productKey];
   setGeoColourMapEnabled(productKey === "hybrid");
   if(satelliteFrames.some(frame => frame.product !== productKey)) stopPlayback(false);
-  satelliteQualityActive = "low";
   satelliteLoading = !!product;
   satelliteOpacityControl.disabled = !product;
   updatePlaybackControls();
@@ -216,6 +224,8 @@ async function updateSatellite(force=false){
   satelliteLoadTimings = timings;
   const staged = [];
   let committed = false;
+  let atomicCoverage = false;
+  let handedOff = false;
   const missingTimes = new Set();
   setSatelliteStatus("Loading " + product.label + " history" +
     (oldFrames.length ? " · previous imagery retained…" : "…"));
@@ -235,10 +245,20 @@ async function updateSatellite(force=false){
     const geometry = {...detailGeometry,
       width:Math.max(1,Math.round(detailGeometry.width*scale)),
       height:Math.max(1,Math.round(detailGeometry.height*scale))};
+    atomicCoverage=oldFrames.length>0 && oldFrames.every(frame=>frame.product===productKey) &&
+      oldFrames.some(frame=>frame.geometry.bbox.join()!==geometry.bbox.join());
+    if(!atomicCoverage){satelliteQualityActive="low";syncSatelliteToRadar();}
     const newest = Date.parse(metadata.timestamp);
     const oldest = newest-Number(historySelect.value)*3600000;
     const dates = [];
-    for(let time=newest; time>=oldest; time-=metadata.stepMs) dates.push(new Date(time));
+    if(atomicCoverage && coverageOnly){
+      // Reframe the same observations: zooming must not refresh the clock.
+      const roster=queuedDates.length ? queuedDates : previousLoading && previousDates.length
+        ? previousDates : oldFrames.map(frame=>frame.date);
+      dates.push(...roster.sort((a,b)=>b-a));
+    }
+    else for(let time=newest; time>=oldest; time-=metadata.stepMs) dates.push(new Date(time));
+    satelliteRequestedDates=dates.slice();satelliteRequestedProduct=productKey;
     const load = async (date, renderGeometry=geometry, preview=false, timeoutMs=20000) => {
       const image = await loadSatelliteImage(satelliteImageURL(product,date,renderGeometry),request.signal,timeoutMs);
       if(generation !== satelliteGeneration || request.signal.aborted) return;
@@ -251,6 +271,11 @@ async function updateSatellite(force=false){
       const selectedTime = satelliteFrames[currentSatelliteIndex]?.date.getTime();
       staged.push({date,overlay,geometry:renderGeometry,product:productKey,preview:true});
       staged.sort((a,b) => a.date-b.date);
+      if(atomicCoverage){
+        setSatelliteStatus("Loading expanded view " + staged.length + "/" + dates.length +
+          " · current movie retained…");
+        return;
+      }
       const sameProduct = !satelliteFrames.length || satelliteFrames[0].product === productKey;
       const clock = playbackTime ?? Infinity;
       if(sameProduct || staged.some(frame => frame.date.getTime() <= clock)){
@@ -297,6 +322,17 @@ async function updateSatellite(force=false){
       }
     }));
     if(generation !== satelliteGeneration) return;
+    if(atomicCoverage){
+      if(request.signal.aborted || missingTimes.size || staged.length!==dates.length)
+        throw new Error("Expanded coverage is incomplete");
+      satelliteLoading=false;
+      satelliteCoveragePending={generation,product:productKey,frames:staged,stepMs:metadata.stepMs};
+      handedOff=true;
+      timings.historyMs=performance.now()-started;
+      setSatelliteStatus(playing ? "Expanded view ready · switching after this pass…" : "Expanded view ready…");
+      if(!playing) commitSatelliteCoverage();
+      return;
+    }
     if(!committed) throw new Error("No replacement satellite imagery at the selected time");
     const wanted = new Set(dates.map(date => +date));
     satelliteFrames = satelliteFrames.filter(frame => {
@@ -312,7 +348,8 @@ async function updateSatellite(force=false){
   catch(error){
     if(generation === satelliteGeneration){
       console.error("Satellite error:",error);
-      setSatelliteStatus(satelliteFrames.length
+      if(atomicCoverage) satelliteCoverageMessage="expanded view incomplete; previous coverage retained · Refresh to retry";
+      setSatelliteStatus(atomicCoverage ? "Expanded view incomplete · previous coverage retained. Refresh to retry." : satelliteFrames.length
         ? "Satellite update failed · previous imagery retained. Try Refresh."
         : "Satellite unavailable. Map and radar retained; try Refresh.","error");
     }
@@ -320,7 +357,7 @@ async function updateSatellite(force=false){
   finally{
     clearTimeout(timeout);
     clearTimeout(historyTimeout);
-    if(!committed) for(const frame of staged) frame.overlay.remove();
+    if(!committed && !handedOff) for(const frame of staged) frame.overlay.remove();
     if(generation === satelliteGeneration){
       satelliteLoading = false;
       updatePlaybackControls();
@@ -376,7 +413,7 @@ function initializeSatellite(){
       const geometry = satelliteGeometry();
       const uncovered = !satelliteFrames.length || satelliteFrames.some(frame =>
         frame.geometry.bbox.join() !== geometry.bbox.join());
-      if(uncovered) updateSatellite();
+      if(uncovered) updateSatellite(false,true);
       else queueSatelliteRefinement();
     },350);
   });

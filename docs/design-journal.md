@@ -1309,6 +1309,44 @@ screenshot confirmed readable labels and footer credits at 100% satellite opacit
 Meteomatics remains a lab-only connector awaiting account access; no paid source
 or key was added to the production app.
 
+## 6 November 2026 — GeoColour default, actual image dimensions and stable zoom coverage
+
+The user requested GeoColour as the default, clear Low/High identification next
+to frame counts, clarification of caching, and stable zoom-out handling. GeoColour
+is now selected initially, with radar and satellite loading concurrently.
+The satellite readout includes actual displayed quality and decoded image size;
+selecting High does not imply High is displayed before its complete batch is ready.
+These pixel dimensions are deliberately distinguished from native ground resolution.
+
+Inspection confirmed that viewport updates previously replaced observations one
+at a time, producing an animation alternating narrow rectangles and expanded
+images. Added `satelliteCoverage.js`: a coverage change retains the old movie
+unchanged while staging every matching observation in the new extent. It commits
+the entire replacement between passes (including end-of-playback), or immediately
+while paused, without moving the UTC clock. Requests remain newest to oldest.
+Missing/timeout responses retain the old movie and show a persistent Refresh retry
+message; successful partial downloads remain cached. Further viewport requests
+discard stale prepared batches. Initial history still loads progressively, and
+reframing while that load is incomplete preserves its full requested time roster.
+High preparation waits until the new Low coverage has committed.
+
+Cache behavior is now explicit in the README: satellite source PNGs have bounded
+16 MiB memory and 48 MiB / 96-entry persistent caches, with memory fallback if
+browser storage is unavailable. Radar has session-memory caching; base-map tiles,
+vector fonts/styles and other network resources use browser/provider caching.
+The app does not promise that every resource or previous scene stays cached.
+A different geographic BBOX or output size is a different satellite cache key.
+
+Validation: full Chrome checks passed GeoColour/visible/IR loading, actual Low/High
+pixel readouts, uninterrupted old-movie playback while expanded images arrive,
+complete replacement at a boundary, incomplete-coverage retention, paused commit
+without clock movement, and full initial-history preservation across a reframe.
+Existing caches, quality staging, radar toggles, registration, detailed vector
+labels, original Map restoration and renderer fallback also passed with no
+JavaScript errors. A 390-pixel viewport screenshot showed both readouts fitting
+beside each other with image dimensions and clear of attribution. Physical iPhone/
+Safari validation remains outstanding.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite

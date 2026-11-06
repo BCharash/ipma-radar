@@ -67,8 +67,8 @@ try:
         if c.evaluate('typeof initializeSatellite === "function" && typeof radarFrames !== "undefined" && !!map'): break
         time.sleep(.2)
     print('STARTUP', c.evaluate('({errors:testErrors, overflow:document.documentElement.scrollWidth>innerWidth})'), flush=True)
-    assert c.evaluate('map.hasLayer(baseMapLayer) && !geoColourMapState.ready && typeof maplibregl === "undefined"')
-    result=c.evaluate("(async()=>{historySelect.value='1'; await rebuildRadar();return {frames:radarFrames.length,errors:testErrors};})()")
+    assert c.evaluate('satelliteSelect.value==="hybrid" && geoColourMapState.desired')
+    result=c.evaluate("(async()=>{historySelect.value='1'; await Promise.all([rebuildRadar(),updateSatellite()]);return {frames:radarFrames.length,errors:testErrors};})()")
     print('RADAR',result,flush=True)
     assert result['frames'] > 1 and not result['errors']
     for mode in (['hybrid'] if '--quick' in sys.argv else ['hybrid','visible','infrared']):
@@ -150,9 +150,11 @@ try:
       cancelSatelliteRefinement();
       const originalLoader=loadSatelliteImage;
       const calls=[];
-      let releaseHistory,releaseHigh;
+      let releaseHistory,releaseHigh,releaseCoverage;
+      let holdCoverage=false,coverageRequests=0;
       const historyGate=new Promise(resolve=>{releaseHistory=resolve;});
       const highGate=new Promise(resolve=>{releaseHigh=resolve;});
+      const coverageGate=new Promise(resolve=>{releaseCoverage=resolve;});
       const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       try{
         satelliteSelect.value='map';await updateSatellite();
@@ -169,6 +171,7 @@ try:
           calls.push(call);
           if(call.size<=256 && calls.filter(c=>c.size<=256).length>=3)await historyGate;
           if(call.size>256)await highGate;
+          if(holdCoverage && ++coverageRequests>=2)await coverageGate;
           const image=new Image();image.src=source;await image.decode();return image;
         };
         const pending=updateSatellite();
@@ -196,10 +199,12 @@ try:
         const waitsForBoundary=satelliteQualityActive==='low' && satelliteQualityPending;
         playbackCursor=playbackTimeline.length-1;await sleep(220);
         const allHigh=satelliteQualityActive==='high' && satelliteFrames.every(f=>f.detail);
+        const highReadout=document.getElementById('satelliteFrameCounter').textContent.includes('High 2×2 px');
         let uniformHigh=true;
         for(const t of playbackTimeline){displayPlaybackTime(t);uniformHigh=uniformHigh && satelliteFrames.some(f=>f.detail.overlay===satelliteLayer);}
         satelliteQualitySelect.value='low';satelliteQualitySelect.dispatchEvent(new Event('change'));
         const lowInstant=satelliteQualityActive==='low' && satelliteFrames.some(f=>f.overlay===satelliteLayer);
+        const lowReadout=document.getElementById('satelliteFrameCounter').textContent.includes('Low 2×2 px');
         const before=calls.length;
         satelliteQualitySelect.value='high';await refineSatelliteFrame();
         const highReuse=calls.length===before;
@@ -212,12 +217,22 @@ try:
         const incompleteStaysLow=satelliteQualityActive==='low' && !satelliteQualityPending;
         loadSatelliteImage=goodLoader;
         const priorBounds=satelliteFrames[0].geometry.bounds;
+        const oldMovie=satelliteFrames.slice();
+        holdCoverage=true;
         const priorTime=playbackTime;
         const beforeCoverage=calls.length;
         map.setZoom(map.getZoom()-2,{animate:false});
         const coverageKeepsClock=playing && playbackTime===priorTime;
         for(let i=0;i<200 && calls.length===beforeCoverage;i++)await sleep(5);
+        await sleep(220);
+        const keepsWholeMovie=playing && satelliteLoading && satelliteFrames.length===oldMovie.length && satelliteFrames.every((frame,i)=>frame===oldMovie[i]);
+        clearTimeout(playbackTimer);
+        const beforeBatchTime=playbackTime;
+        releaseCoverage();
         for(let i=0;i<200 && satelliteLoading;i++)await sleep(5);
+        const waitsForCoverageBoundary=!!satelliteCoveragePending && satelliteFrames.every((frame,i)=>frame===oldMovie[i]) && playbackTime===beforeBatchTime;
+        playbackCursor=playbackTimeline.length-1;scheduleNextFrame();await sleep(220);
+        holdCoverage=false;
         const expanded=satelliteFrames.every(f=>f.geometry.bounds.contains(map.getBounds())) &&
           !priorBounds.contains(map.getBounds());
         const zoomNewestFirst=calls[beforeCoverage]?.time===newest;
@@ -229,6 +244,23 @@ try:
             rect.top-mr.top+(g.bbox[3]-q.y)/(g.bbox[3]-g.bbox[1])*rect.height));
         }));
         stopPlayback(false);cancelSatelliteRefinement();satelliteQualitySelect.value='low';
+        const expandedMovie=satelliteFrames.slice(),pausedTime=playbackTime;
+        const workingLoader=loadSatelliteImage;
+        const failedTime=+expandedMovie[0].date;
+        loadSatelliteImage=async(url,signal)=>Date.parse(new URL(url).searchParams.get('time'))===failedTime ? null : workingLoader(url,signal);
+        map.setZoom(map.getZoom()-1,{animate:false});clearTimeout(satelliteMoveTimer);
+        await updateSatellite(false,true);
+        const failedCoverageRetainsMovie=satelliteFrames.every((frame,i)=>frame===expandedMovie[i]) && satelliteCoveragePending===null && !!satelliteCoverageMessage && playbackTime===pausedTime;
+        loadSatelliteImage=workingLoader;
+        await updateSatellite(false,true);
+        const pausedCoverageCommits=satelliteCoveragePending===null && satelliteFrames.every(frame=>!expandedMovie.includes(frame)) && playbackTime===pausedTime && satelliteFrames.every(frame=>frame.geometry.bounds.contains(map.getBounds()));
+        const fullHistory=satelliteFrames.slice();
+        displayPlaybackTime(+fullHistory[fullHistory.length-1].date);
+        for(const frame of fullHistory.slice(0,-2)) frame.overlay.remove();
+        satelliteFrames=fullHistory.slice(-2);currentSatelliteIndex=1;satelliteLoading=true;
+        map.setZoom(map.getZoom()+2,{animate:false});clearTimeout(satelliteMoveTimer);
+        await updateSatellite(false,true);
+        const initialHistorySurvivesReframe=satelliteFrames.length===fullHistory.length && satelliteFrames.every((frame,i)=>+frame.date===+fullHistory[i].date);
         const beforeBoth=Math.min(+radarFrames[0].date,+satelliteFrames[0].date)-60000;
         displayPlaybackTime(beforeBoth);
         const noFutureFrames=!radarFrameAvailable && !satelliteLayer;
@@ -236,10 +268,10 @@ try:
         const radar=document.getElementById('radarFrameCounter'),sat=document.getElementById('satelliteFrameCounter');
         const sideBySide=Math.abs(radar.getBoundingClientRect().top-sat.getBoundingClientRect().top)<2 && radar.getBoundingClientRect().right<=sat.getBoundingClientRect().left;
         return {newestFirst,playableWhileLoading,repeatsWhileLoading,togglesContinue,arrivalsKeepClock,historyAdopted,
-          lowUntilComplete,lateHighRespectsLow,waitsForBoundary,allHigh,uniformHigh,lowInstant,highReuse,incompleteStaysLow,coverageKeepsClock,expanded,zoomNewestFirst,
+          lowUntilComplete,lateHighRespectsLow,waitsForBoundary,allHigh,highReadout,uniformHigh,lowInstant,lowReadout,highReuse,incompleteStaysLow,coverageKeepsClock,keepsWholeMovie,waitsForCoverageBoundary,expanded,zoomNewestFirst,failedCoverageRetainsMovie,pausedCoverageCommits,initialHistorySurvivesReframe,
           registered:registrationError<2,noFutureFrames,sideBySide,errors:testErrors};
       }finally{
-        releaseHistory();releaseHigh();stopPlayback(false);cancelSatelliteRefinement();
+        releaseHistory();releaseHigh();releaseCoverage();stopPlayback(false);cancelSatelliteRefinement();
         satelliteQualitySelect.value='low';loadSatelliteImage=originalLoader;setLoopUI(false);setRadarVisible(true);
         map.setView([39.0867,-9.3777],7,{animate:false});clearTimeout(satelliteMoveTimer);
       }

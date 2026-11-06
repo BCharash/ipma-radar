@@ -60,6 +60,7 @@ function stopPlayback(restoreView=true){
     map.setView(playbackView.center,playbackView.zoom,{animate:false});
   }
   playbackView = null;
+  commitSatelliteCoverage();
   commitSatelliteQuality();
 }
 
@@ -83,6 +84,7 @@ function scheduleNextFrame(){
     if(!playing) return;
     playbackCursor++;
     if(playbackCursor >= playbackTimeline.length){
+      commitSatelliteCoverage();
       commitSatelliteQuality();
       const availableTimes = availablePlaybackFrames().map(frame => frame.date.getTime());
       const historyExtended = availableTimes.some(time => !playbackTimeline.includes(time));

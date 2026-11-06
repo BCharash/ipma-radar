@@ -29,14 +29,14 @@ function commitSatelliteQuality(){
 
 function queueSatelliteRefinement(){
   clearTimeout(satelliteDetailTimer);
-  if(satelliteLoading || satelliteDetailRequest || satelliteQualitySelect.value !== "high" ||
+  if(satelliteLoading || satelliteCoveragePending || satelliteCoverageMessage || satelliteDetailRequest || satelliteQualitySelect.value !== "high" ||
     !SATELLITE_PRODUCTS[satelliteSelect.value] ||
     satelliteFrames.some(frame => frame.product !== satelliteSelect.value)) return;
   satelliteDetailTimer = setTimeout(() => refineSatelliteFrame(),400);
 }
 
 async function refineSatelliteFrame(){
-  if(satelliteLoading || satelliteDetailRequest || satelliteQualitySelect.value !== "high" ||
+  if(satelliteLoading || satelliteCoveragePending || satelliteCoverageMessage || satelliteDetailRequest || satelliteQualitySelect.value !== "high" ||
     !satelliteFrames.length) return;
   const generation = satelliteDetailGeneration;
   const frames = satelliteFrames.slice();
