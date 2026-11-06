@@ -1,6 +1,6 @@
 /* Lab-only sources and raw-image cache. No production scripts or cache are used. */
 export const WMS = 'https://view.eumetsat.int/geoserver/wms';
-export const PRODUCTS = {baseline:'mtg_fd:rgb_geocolour', texture:'msg_fes:rgb_natural', mask:'msg_fes:clm'};
+export const PRODUCTS = {baseline:'mtg_fd:rgb_geocolour'};
 const CACHE = 'skyflow-cloud-lab-images-v1';
 const memory = new Map();
 let writes = Promise.resolve();
@@ -45,7 +45,7 @@ export function parseCatalogue(text) {
 }
 
 export async function catalogue(signal) {
-  const entries = await Promise.all(['msg_fes','mtg_fd'].map(async namespace => {
+  const entries = await Promise.all(['mtg_fd'].map(async namespace => {
     const blob = await timedFetch(`${WMS}?service=WMS&request=GetCapabilities&version=1.3.0&namespace=${namespace}`,signal,15000,{cache:'no-cache'});
     return parseCatalogue(await blob.text());
   }));
@@ -91,7 +91,7 @@ export function imageURL(layer,time,geometry) {
   const params = new URLSearchParams({service:'WMS',version:'1.1.1',request:'GetMap',layers:layer,
     styles:'',srs:'EPSG:3857',bbox:geometry.bbox.join(','),width:geometry.width,height:geometry.height,
     time:new Date(time).toISOString(),format:'image/png',transparent:'true',
-    interpolations:layer===PRODUCTS.mask ? 'nearest neighbor' : 'bilinear',format_options:'antialias:none'});
+    interpolations:'bilinear',format_options:'antialias:none'});
   return `${WMS}?${params}`;
 }
 
@@ -143,37 +143,4 @@ export async function raster(url,signal,mode='cached') {
 export function canvasFor(image) {
   const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
   canvas.getContext('2d').drawImage(image,0,0);return canvas;
-}
-
-export function photographicClouds(texture,mask,edges='exact') {
-  if(texture.width!==mask.width || texture.height!==mask.height) throw new Error('Texture/mask pixel grids differ');
-  const canvas=canvasFor(texture),context=canvas.getContext('2d');
-  const pixels=context.getImageData(0,0,canvas.width,canvas.height);
-  const maskPixels=canvasFor(mask).getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
-  const stats={cloud:0,clear:0,noData:0,blended:0,unknown:0,total:canvas.width*canvas.height};
-  for(let i=0;i<maskPixels.length;i+=4) {
-    const [r,g,b,a]=maskPixels.subarray(i,i+4);
-    // Exact provider categorical palette, NOT a brightness threshold on photos.
-    // White=cloud; blue=clear water; green=clear land; black/alpha0=no data.
-    if(a===255 && r===255 && g===255 && b===255) {stats.cloud++;continue;}
-    const sourceAlpha=pixels.data[i+3];
-    pixels.data[i+3]=0;
-    if(!a || (r===0 && g===0 && b===0)) stats.noData++;
-    else if(a===255 && r===0 && ((g===0 && b===255) || (g===192 && b===0))) stats.clear++;
-    else {
-      // A WMS resampler may mix the four categorical palette colours even
-      // with nearest-neighbour requested. Solve that palette mixture, never
-      // threshold the photographic image. Red occurs only in white/cloud.
-      const cloud=r/255,land=(g-r)/192,water=(b-r)/255;
-      const valid=land>=-1/192 && water>=-1/255 && cloud+land+water<=1.015;
-      if(edges==='blended' && valid) {
-        pixels.data[i+3]=Math.round(sourceAlpha*cloud*a/255);
-        stats.blended++;
-      } else stats.unknown++;
-    }
-
-  }
-  if(!stats.cloud && !stats.clear && !stats.blended) throw new Error('Cloud Mask palette not recognised, or no classified data in view');
-  context.putImageData(pixels,0,0);
-  return {canvas,stats};
 }

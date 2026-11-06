@@ -165,11 +165,12 @@ temporary directory. Real iPhone/Safari testing remains separate.
 
 ## SkyFlow cloud lab
 
-A separate still-image comparison is available at
-[`labs/clouds/index.html`](labs/clouds/index.html). Open it with Live Server to
-compare GeoColour against photographic imagery clipped by a cloud mask, with
-linked maps, matching UTC slots, Low/High resolution, optional IPMA radar,
-and place names/major roads/borders drawn above fully opaque GeoColour,
-cache/timing measurements, and a downloadable comparison record. The Meteomatics
-slot remains inactive pending access. See [lab instructions and findings](docs/cloud-lab.md).
-The production app's name, sources and cache are unchanged by this lab.
+Open [`labs/clouds/index.html`](labs/clouds/index.html) with Live Server to compare
+GeoColour with regional map features against the identical imagery with a live,
+detailed OpenFreeMap vector street map. The previous photographic-mask comparison
+has been removed. A third panel has a working local Meteomatics connector awaiting
+satellite account access. Linked maps, UTC selection, opacity, Low/High requests,
+optional IPMA radar and downloadable comparison records remain available.
+
+See [lab instructions, provider setup and validation](docs/cloud-lab.md). The
+production app's name, sources and cache are unchanged by this lab.

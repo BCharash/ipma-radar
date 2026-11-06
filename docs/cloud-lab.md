@@ -1,204 +1,166 @@
 # SkyFlow cloud comparison lab
 
-Open [the separate lab](../labs/clouds/index.html) using Live Server. From the
-running app's origin, visit `/labs/clouds/`. The lab does not load the production
-controller, change the app name, or share its satellite cache. Stage one compares
-still images over Portugal and nearby Atlantic/Europe; animation and worldwide
-source selection remain future stages.
+Open [labs/clouds/index.html](../labs/clouds/index.html) with Live Server, or visit
+`/labs/clouds/` on its running origin. This is an isolated still-image lab; the
+production application and its sources are unchanged.
 
-## Comparisons
+## Current comparisons
 
-1. **GeoColour with map features:** `mtg_fd:rgb_geocolour`, the app's existing
-   full-scene product, preserved without masking. Place names, major roads,
-   coastlines and country boundaries are drawn above it, even at 100% image
-   opacity.
-2. **Photographic clouds:** `msg_fes:rgb_natural` combined with `msg_fes:clm` at
-   the same requested UTC slot, projection, bounds and pixel dimensions. Cloud
-   pixels retain the original photograph's RGB values; clear/no-data areas have
-   zero alpha. Natural Colour includes a near-infrared channel; ice clouds can
-   look cyan. It is textured satellite imagery, not a plain white cloud mask or
-   necessarily human-eye true colour.
-3. **Meteomatics:** an inactive map slot, clearly labelled without provider data.
-   Its documented `sat_cloud_layer:idx` is the intended future comparison, once
-   access and permitted distribution are established. No credentials are read,
-   stored or requested by this lab.
+1. **GeoColour + regional features:** existing MTG GeoColour with local Natural
+   Earth place names, major roads and outlines above it. This is the reference.
+2. **GeoColour + detailed vector map:** exactly the same decoded GeoColour pixels
+   and requested UTC slot as panel 1, with live OpenFreeMap/OpenStreetMap vector
+   tiles. Streets, paths, names and other map detail change as you zoom. The
+   earlier MSG photographic-image-plus-mask experiment has been removed.
+3. **Meteomatics photographic overlay:** `sat_cloud_layer:idx` above the same vector
+   map as panel 2. Its connector is implemented, but real imagery requires an
+   account with satellite access. The user currently has no account access, so
+   this panel starts with a real basemap and an explicit awaiting-access label.
+   Simulated provider responses are used only in automated tests, never as a
+   substitute for provider imagery in the lab.
 
-The two active comparisons have different satellite instruments/products. Use
-**Inspect → Original photograph / Classification mask / Cloud-only photograph**
-on panel two to isolate what masking does to its own source. Do not attribute
-all differences between panel one and panel two to the transparency algorithm.
+Panel 2 has a complete vector basemap below GeoColour and detailed line/symbol
+layers above it. GeoColour retains its land/ocean image at full opacity. Reduce
+**Image opacity** to reveal the underlying street-map surface. This changes the
+whole GeoColour image's opacity, including clouds. Panel 3, when connected, is
+the comparison intended to keep map surfaces visible in cloud-free areas.
 
-## A useful first session
+The map features switches apply to both approaches: **Place names**, **Major
+roads**, **Coastlines & borders**, and **Strength**. In vector panels, names include
+street/POI labels, roads include paths and related transport features, and the
+outline switch controls other line context such as boundaries and waterways.
+Natural Earth context in panel 1 remains regional and generalized. Feature
+controls do not change or reload satellite pixels. Local outlines no longer
+cover the vector panels; their map detail comes from vector tiles.
 
-1. Leave **Latest common time**, **Low**, and **100% opacity** selected. The latest
-   common slot may lag each individual product's newest image.
-2. On GeoColour, compare the **Place names**, **Major roads**, and **Coastlines &
-   borders** switches and **Strength** slider. These change geographic context
-   immediately without changing satellite pixels, time, opacity or loading.
-   Inspect cloud texture, clear areas and coastlines. Switch panel two between
-   the original photograph, raw mask, and cloud-only photograph without loading
-   more data. Local outlines remain above imagery at any opacity.
-3. Compare **Exact classes only** with **Reconstruct palette blends**. The first
-   deliberately omits noncategorical pixels and reports their count. The second
-   reconstructs mixed mask pixels as described below. Inspect thin clouds and
-   edges especially carefully.
-4. At the same selected time, compare **Low (256 px)** and **High (768 px)**. These
-   are maximum requested image dimensions, not a claim of higher native sensor
-   resolution. The two sizes have separate cache keys.
-5. Use **Bypass lab cache**, then **Reuse lab cache**. Record per-panel elapsed
-   time, memory/disk/network origin, and returned bytes in the JSON download.
-   Bypass skips lab cache reads and uses fetch `no-store`; it does not empty the
-   browser, base-map, provider or intermediary caches. Successful bypass loads
-   populate the lab cache for the following comparison.
-6. Pan or zoom any map. All maps follow and request a common expanded image grid
-   after a 500 ms debounce. The old images remain explicitly timestamped until
-   replacement imagery is ready. Failed loads retain the previous image.
-7. Enable **IPMA radar** if useful. Its requested image is at or before the selected
-   UTC time, trying preceding five-minute slots up to 30 minutes back. It uses
-   the app's original IPMA bounds. Its timestamp and availability are separate
-   from the satellite comparison.
-8. Add visual notes and **Download comparison record**. Save the transparent
-   cloud PNG if useful and take a browser screenshot of the maps. The PNG has
-   no basemap or embedded georeferencing: retain the JSON record for its BBOX,
-   projection, observation slot and source URLs. Take separate daylight, sunset
-   and nighttime records; the Natural Colour experiment needs sunlight.
+## Compare the maps
 
-## GeoColour map features
+- Start with **100% image opacity** and **85% feature strength**. Pan/zoom any map;
+  the others follow. Panel 2 should add genuine street-level context as you zoom.
+- Fade imagery to compare the underlying detailed map. Switch roads/names off and
+  on independently and inspect bright-cloud and dark-ocean readability.
+- **Latest GeoColour time** uses MTG availability only. The lab no longer waits
+  for MSG imagery/masks or their slower cadence. A custom UTC selection uses the
+  available GeoColour slot at or before it. Both GeoColour panels always match.
+- **Low / High** requests a maximum image side of 256 / 768 pixels. These are
+  output image sizes, not a change to satellite sensor resolution. One decoded
+  public image supplies both panels, avoiding duplicate WMS requests.
+- **GeoColour cache** controls the isolated public-image cache. Bypass skips
+  lab-cache reads and uses fetch `no-store`, then stores the successful response
+  for subsequent reuse. It cannot flush upstream caches or vector-map tiles.
+- Optional **IPMA radar** requests a five-minute image at or before selection,
+  searching up to 30 minutes back. Panel 1 uses the original Leaflet image bounds;
+  vector panels place the same radar image below their road/name layers.
+- Add notes and **Download comparison record**. It contains imagery source/time,
+  geometry, feature settings, timing and placement checks. It never contains
+  provider credentials. Screenshots can be taken with the browser.
 
-This option preserves the complete MTG image. It does not extract clouds or
-reveal the underlying street-map surface; it places transparent vector context
-on top. Names have a light halo for visibility against bright/dark cloud and
-surface areas. Roads use fine coloured lines with a light casing. Place-label
-priority and overlap checks limit clutter; more names and secondary roads appear
-as you zoom. Controls apply to all comparison maps and remain independent of
-image opacity and optional radar. Defaults are enabled at 85% strength.
+Imagery coverage is still limited to the lab's regional MSG/MTG footprint check.
+Worldwide vector tiles do not imply worldwide GeoColour or IPMA coverage.
+Animation and worldwide weather-provider routing remain separate work.
 
-Local public-domain Natural Earth place/road extracts cover the same regional
-rectangle as the existing outlines (longitude -40..15, latitude 25..55). Roads
-are generalized major/secondary highways; places are selected cities/towns,
-not all streets or settlements. This lab adds no map-service account or key.
-See [data provenance and regeneration](../data/README.md). Features outside this
-regional dataset remain a future worldwide-source decision.
+## Connecting Meteomatics later
 
-The download records current map-feature settings and snapshots them for each
-imagery run. Feature switches do not cause satellite requests. Browser checks
-verify Lisbon/Porto labels and roads above fully opaque imagery, visibility and
-strength controls, and unchanged satellite pixels/overlay through those controls.
+No account, licence or free satellite tier has been assumed or created. Ask the
+provider for access that explicitly includes `sat_cloud_layer:idx`, its historical
+WMS images, and your intended limited noncommercial display/caching rights.
+This daylight visible product becomes dark without sunlight, according to the
+provider. Real appearance, thin clouds, edge quality, cadence and account terms
+remain to be evaluated with actual access.
 
-## Spatial and temporal controls
-
-All requests use WMS 1.1.1 `SRS=EPSG:3857`. One shared snapped projected rectangle
-covers all three map viewports, with identical BBOX and dimensions for the image
-and mask. Leaflet overlays use the geographic corners obtained by unprojecting
-those exact projected corners. The comparison record includes a corner/centre
-placement check in CSS pixels. This checks application placement, not instrument
-navigation, cloud parallax, ground-level rain, or the cloud-mask classification.
-
-The lab reads product-specific time ranges and cadences from namespace-filtered
-WMS catalogues. Initially it chooses the newest common advertised slot for all
-three products. A manually selected time snaps each comparison backward to
-available slots, never forward. The texture and mask always share an exact
-common slot. The GeoColour offset and the difference between panels are explicit.
-Requested catalogue slots are not independently verified acquisition timestamps:
-the WMS can use nearest available data internally. Do not claim exact temporal
-matching beyond what the service makes observable.
-
-A new observation, resolution, or viewport cancels superseded requests. Each
-panel commits its complete still image independently; imagery and mask are never
-shown half-prepared. Retained older panels carry their own timestamps. There is
-no animation in this stage and no inference of motion or future cloud positions.
-
-## Mask palette and edge experiment
-
-Provider palette observed in PNG samples, consistent with the provider guide:
-
-| RGB | Meaning | Exact-mode alpha |
-| --- | --- | --- |
-| 255,255,255 | Cloud | Original photograph's alpha |
-| 0,192,0 | Clear land | 0 |
-| 0,0,255 | Clear water | 0 |
-| 0,0,0 or mask alpha 0 | Unprocessed/no data | 0 |
-| Other | Mixed/unrecognised | 0, reported |
-
-Requests specify `interpolations=nearest neighbor` and disable antialiasing, but
-live returned images still contain mixed colours. Exact mode therefore remains
-the conservative default rather than guessing a threshold on the photograph.
-
-The optional palette reconstruction assumes those mixtures come from resampling
-the four known palette colours. Their contributions solve:
-
-```
-cloud = R / 255
-land  = (G - R) / 192
-water = (B - R) / 255
-noData = 1 - cloud - land - water
-```
-
-Only feasible mixtures, allowing a small channel-rounding tolerance, are used.
-The original photo alpha is multiplied by the reconstructed cloud contribution
-and the mask alpha. Infeasible colours remain transparent and counted as
-unrecognised. The record distinguishes exact cloud, clear, reconstructed and
-unrecognised pixels. This is an experimental reconstruction of resampling
-coverage, **not cloud optical thickness or physical thin-cloud transparency**.
-It requires review if the service palette/style changes. Original RGB cloud
-texture is never replaced with a synthetic white fill.
-
-The lab cache contains raw PNGs only (24-entry/16 MiB memory cap and
-48-entry/32 MiB persistent cap). Derived renders are recomputed, so changing
-edge policy cannot reuse an incompatible processed image. Cache Storage is
-optional; memory/network paths remain usable when it is unavailable.
-
-## Sources and access
-
-- [EUMETView](https://view.eumetsat.int/), public WMS, no key.
-- [Cloud Mask product guide](https://user.eumetsat.int/s3/eup-strapi-media/pdf_clm_pg_6b00d53e6b.pdf).
-- [Natural Colour description](https://view.eumetsat.int/productviewer/productDetails/msg_fes%3Argb_natural?v=default).
-- [GeoServer sampling parameters](https://docs.geoserver.org/main/en/user/services/wms/vendor/#interpolations).
-- [Meteomatics photographic cloud overlay](https://www.meteomatics.com/en/api/available-parameters/satellite/).
-- Local Natural Earth outlines: [provenance](../data/README.md).
-
-No commercial-provider account, free tier, or right to distribute derived cloud
-images is assumed. Product-specific redistribution terms remain part of provider
-selection before distributing derived assets or adopting this source in the app.
-
-## Validation and findings
-
-Run on macOS with Google Chrome installed:
+For ordinary vector comparisons, Live Server is sufficient. For the optional
+provider connection, run from the repository root:
 
 ```sh
+python3 scripts/serve-cloud-lab.py --prompt
+```
+
+Enter your provider username and password in that terminal; the password input
+is hidden. Nothing is written to a credentials file or browser storage. Visit:
+
+```text
+http://127.0.0.1:8766/labs/clouds/
+```
+
+Then click **Check connection** and **Include Meteomatics**. Configured credentials
+are not proof of satellite entitlement; the first actual request may report an
+account/access error. Without credentials, use `python3 scripts/serve-cloud-lab.py`
+to run the vector comparisons with the provider panel inactive.
+
+For an existing local credential setup, `METEOMATICS_USERNAME` and
+`METEOMATICS_PASSWORD` environment variables are also supported. Do not add
+credentials to source files, query strings or comparison notes/downloads.
+
+The server binds to `127.0.0.1` and forwards only the fixed Meteomatics WMS product,
+with validated UTC time, EPSG:3857 BBOX and bounded image dimensions. Provider
+credentials go only in the upstream HTTPS Authorization header. It rejects
+cross-site provider calls and redirects and caps concurrent requests. Successful
+provider PNGs are held only in a bounded local-server memory cache (16 entries,
+32 MiB); the browser receives `no-store`. The GeoColour cache control does not
+bypass this separate provider-memory cache. Restarting the local server clears
+it. No Meteomatics images are written to the public-image Cache Storage.
+
+The connector is a local research tool, not a production hosting backend. A
+static published lab can run panels 1 and 2 but needs a separately implemented
+server-side deployment for authenticated provider requests.
+
+## Registration and timing
+
+Public GeoColour requests use WMS 1.1.1 `SRS=EPSG:3857`; provider requests use
+Meteomatics WMS 1.3.0 `CRS=EPSG:3857`. Both receive the same projected BBOX and
+image grid. Leaflet corners and MapLibre image-source coordinates come from
+unprojecting those exact projected corners. The GL Leaflet bridge preserves the
+shared pan/zoom; vector features render in the same map coordinate system.
+
+Both GeoColour panels share the same canvas and UTC slot. The optional provider
+is requested at that slot too, but it may use its own nearest source observation.
+No independently verified provider acquisition time or native cadence is claimed.
+A requested timestamp is not evidence of exact cross-satellite temporal matching.
+
+Old imagery remains labelled during replacement requests. Superseded requests
+cannot commit stale images. Feature visibility changes are independent of the
+weather layers; weather opacity does not fade vector context. Placement checks
+compare projected points with Leaflet/MapLibre screen positions. These validate
+application placement, not instrument geolocation, cloud parallax or ground rain.
+
+## Sources and dependencies
+
+- [OpenFreeMap](https://openfreemap.org/), with its documented
+  [Leaflet integration](https://openfreemap.org/quick_start/); no API key required.
+- OpenFreeMap Liberty style and its OpenStreetMap/OpenMapTiles attribution,
+  displayed on the map. Its live vector tile/font/sprite services require network.
+- MapLibre GL JS 5.6.2 and MapLibre GL Leaflet bridge 0.1.4, pinned browser builds.
+  These add WebGL requirements to the two vector panels; failure is reported
+  separately from the regional reference map.
+- [EUMETView](https://view.eumetsat.int/), public MTG GeoColour WMS, no key.
+- [Meteomatics photographic product](https://www.meteomatics.com/en/api/available-parameters/satellite/)
+  and [WMS geometry/time contract](https://www.meteomatics.com/en/api/wms/getmap-request/).
+- [Natural Earth local data provenance](../data/README.md), panel 1 only.
+
+## Validation
+
+```sh
+python3 tests/cloud-lab-server-check.py
 python3 tests/cloud-lab-check.py
 ```
 
-The suite uses an isolated Chrome profile and local server, live catalogue/PNG
-requests, and controlled raster fixtures. It checks RGB preservation, clear-area
-alpha, palette reconstruction, unknown-class reporting, identical pixel grids,
-UTC snapping, cache reuse, Low/High requests, projection placement, linked pan
-and automatic coverage, stale-load cancellation, and failed-load retention.
-It also checks optional IPMA imagery and the mobile layout. Network failure can
-fail live checks. Screenshots are written to `/private/tmp/skyflow-cloud-lab-desktop.png`
-and `/private/tmp/skyflow-cloud-lab-mobile.png`.
+The first suite uses no network or real credentials: fixed product/projection,
+input limits, absent-account behavior, cross-site rejection, upstream-only dummy
+Authorization headers and memory caching. The second uses live EUMETSAT imagery
+and OpenFreeMap tiles in isolated Chrome plus simulated provider PNGs. It checks
+identical GeoColour pixels/time, real rendered vector roads/text, weather/context
+ordering, feature visibility/strength, imagery opacity, projection placement,
+provider requests without credentials in URLs, linked coverage and cancellation.
+It also checks mobile horizontal overflow. The desktop screenshot is saved at
+`/private/tmp/skyflow-cloud-lab-desktop.png`.
 
-Initial live sample on 6 November 2026, requested UTC slot 11:30:
-
-- Both active comparisons used the same slot and a 256 × 256 image grid.
-- One sample loaded GeoColour in 3.55 s and the texture+mask result in 3.89 s;
-  another loaded in 2.66 s and 1.81 s. These are observed network-path samples,
-  not cold upstream-cache benchmarks or a performance guarantee.
-- Strict mask decoding counted 42,404 cloud, 16,731 clear, and 6,401 mixed/
-  unrecognised pixels (about 9.8%). This is a concrete reason to compare the
-  palette reconstruction with the raw mask instead of silently discarding edges.
-- Optional palette reconstruction accounted for 6,400 of those 6,401 mixed
-  pixels; one remained unrecognised and transparent. This supports testing the
-  reconstruction visually, not treating it as independent cloud truth.
-- Placement error at three projected reference points was about 1.59 CSS pixels,
-  within the two-pixel rounding tolerance used by the checks.
-- Photographic RGB preservation, transparent clear areas, cached reloads, linked
-  coverage, generation cancellation, and failure retention passed the initial
-  browser checks without JavaScript errors. The final suite also passed live
-  IPMA overlay loading, reconstructed-edge alpha, High-resolution requests/cache
-  reuse, and a 390-pixel mobile viewport without horizontal overflow.
-
-These findings demonstrate a functioning still-image experiment. They do not
-establish that the visual result matches Meteoblue, that masks preserve every
-thin cloud, or that daytime Natural Colour is a viable nighttime solution.
-Real iPhone/Safari testing and the external-provider comparison remain open.
+A live 6 November 2026 sample showed matching requested 12:00 UTC GeoColour in
+both panels, with final measured placement errors of about 0.23 CSS pixels
+for Leaflet and 0.44 for the vector renderer. At Leaflet zoom 17 over Lisbon,
+actual street names rendered and the measured image-corner error was about
+0.86 CSS pixels (visible-viewport error about 0.42). The check excludes container
+CSS borders from the coordinate origin and stays within a two-pixel tolerance. Source fetch timing varied between roughly 1.3 and 5.1
+seconds in observed runs; these are not latency guarantees. Real Meteomatics
+imagery/entitlement and physical iPhone/Safari WebGL behavior are still unverified.
+The previous binary-mask experiment and its historical results remain recorded
+in the design journal, rather than presented as current lab options.

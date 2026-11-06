@@ -1,11 +1,10 @@
 import {createMapFeatures} from './map-features.js';
-import {PRODUCTS,catalogue,commonTime,slotAtOrBefore,geometryFor,imageURL,raster,canvasFor,photographicClouds} from './cloud-sources.js';
-
-const $=id=>document.getElementById(id);
-const iso=time=>new Date(time).toISOString();
-const maps=['baselineMap','maskedMap','providerMap'].map(id=>{
+import {createVectorMap} from './vector-map.js';
+import {PRODUCTS,catalogue,commonTime,slotAtOrBefore,geometryFor,imageURL,raster,canvasFor,timedFetch} from './cloud-sources.js';
+const $=id=>document.getElementById(id),iso=time=>new Date(time).toISOString();
+const maps=['baselineMap','vectorMap','providerMap'].map((id,index)=>{
   const map=L.map(id,{zoomControl:true}).setView([39.2,-9.1],6);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  if(index===0) L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:18
   }).addTo(map);
   for(const [pane,zIndex] of [['clouds',300],['rain',350],['outlines',450]]) {
@@ -13,137 +12,112 @@ const maps=['baselineMap','maskedMap','providerMap'].map(id=>{
   }
   return map;
 });
-const panels={baseline:{map:maps[0],status:$('baselineStatus')},masked:{map:maps[1],status:$('maskedStatus')}};
+const renderers={vector:createVectorMap(maps[1],$('vectorMapStatus')),provider:createVectorMap(maps[2],$('providerMapStatus'))};
+const panels={baseline:{map:maps[0],status:$('baselineStatus')},vector:{map:maps[1],status:$('vectorStatus'),renderer:renderers.vector},
+  provider:{map:maps[2],status:$('providerStatus'),renderer:renderers.provider}};
 let metadata=null,request=null,generation=0,moveTimer=null,syncing=false;
 let radarRequest=null,radarGeneration=0,radarLayers=[];
 let record={lab:'SkyFlow cloud comparison',stage:'still images',runs:[]};
-const mapFeatures=createMapFeatures(maps,settings=>{record.mapFeatures=settings;});
-const radarStatus=document.createElement('p');radarStatus.id='radarStatus';radarStatus.className='hint';
-$('overall').after(radarStatus);
-
+const mapFeatures=createMapFeatures([maps[0]],settings=>{record.mapFeatures=settings;});
+const radarStatus=document.createElement('p');radarStatus.id='radarStatus';radarStatus.className='hint';$('overall').after(radarStatus);
 function selectedTime() {
   const time=Date.parse($('observation').value+'Z');
-  if(!Number.isFinite(time)) throw new Error('Choose a valid UTC observation time');
-  return time;
+  if(!Number.isFinite(time)) throw new Error('Choose a valid UTC observation time');return time;
 }
 function showRecord() {
-  const run=record.runs.at(-1);
-  if(!run) return;
-  const describe=(name,item)=>!item ? `${name}: loading` : item.state==='error' ? `${name}: ${item.error}` :
-    `${name}: ${item.requestedSlotUTC} | ${(item.elapsedMs/1000).toFixed(2)} s | ${item.sources.map(source=>source.origin).join(' + ')} | placement error ${item.registrationErrorCssPx?.toFixed(2) ?? 'pending'} CSS px`;
-  $('metrics').textContent=[`Selection: ${run.selectionUTC}`,
-    `Image grid: ${run.pixels.join(' × ')} px | ${run.crs} | ${run.cacheMode==='network' ? 'lab cache bypassed' : 'cache allowed'}`,
-    describe('GeoColour',run.baseline),describe('Masked photograph',run.masked),
-    run.masked?.mask ? `Mask (${run.masked.maskEdges}): ${run.masked.mask.cloud} exact cloud / ${run.masked.mask.clear} clear / ${run.masked.mask.blended} reconstructed / ${run.masked.mask.unknown} unrecognised pixels` : '',
-    `Meteomatics: inactive`,record.radar ? `IPMA radar: ${record.radar.slotUTC}` : 'IPMA radar: off or unavailable',
-    `${record.runs.length} run(s) retained in download; full request URLs and bounds are in the JSON record.`].filter(Boolean).join('\n');
+  const run=record.runs.at(-1);if(!run) return;
+  const describe=(name,item)=>!item ? `${name}: loading` : item.state!=='ready' ? `${name}: ${item.error || item.reason || item.state}` :
+    `${name}: ${item.requestedSlotUTC} | ${(item.elapsedMs/1000).toFixed(2)} s | placement error ${item.registrationErrorCssPx?.toFixed(2) ?? 'pending'} CSS px`;
+  $('metrics').textContent=[`Selection: ${run.selectionUTC}`,`Image grid: ${run.pixels.join(' × ')} px | ${run.crs}`,
+    describe('GeoColour reference',run.baseline),describe('GeoColour + vector map',run.vector),describe('Meteomatics',run.provider),
+    record.radar ? `IPMA radar: ${record.radar.slotUTC}` : 'IPMA radar: off or unavailable',
+    `${record.runs.length} run(s) in download; provider credentials are never included.`].join('\n');
 }
-function download(blob,name) {
-  const url=URL.createObjectURL(blob),link=document.createElement('a');
-  link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
-function retained(panel) {return panel.time===undefined ? '' : `\nPrevious image retained: ${iso(panel.time)}.`;}
-function registration(panel) {
-  const {overlay,geometry,map}=panel;
-  if(!overlay) return null;
-  const rect=overlay.getElement().getBoundingClientRect(),mapRect=map.getContainer().getBoundingClientRect();
+function registration(panel) {return panel.renderer ? panel.renderer.registration(panel.geometry.bounds) : leafletRegistration(panel);}
+function leafletRegistration(panel) {
+  if(!panel.overlay) return null;
+  const {map,geometry}=panel,rect=panel.overlay.getElement().getBoundingClientRect(),parent=map.getContainer().getBoundingClientRect(),b=geometry.bbox;
   return Math.max(...[geometry.bounds.getSouthWest(),geometry.bounds.getNorthEast(),geometry.bounds.getCenter()].map(point=>{
-    const projected=L.CRS.EPSG3857.project(point),b=geometry.bbox;
-    const expected=L.point(rect.left-mapRect.left+(projected.x-b[0])/(b[2]-b[0])*rect.width,
-      rect.top-mapRect.top+(b[3]-projected.y)/(b[3]-b[1])*rect.height);
-    return map.latLngToContainerPoint(point).distanceTo(expected);
+    const q=L.CRS.EPSG3857.project(point);
+    return map.latLngToContainerPoint(point).distanceTo(L.point(rect.left-parent.left-map.getContainer().clientLeft+(q.x-b[0])/(b[2]-b[0])*rect.width,
+      rect.top-parent.top-map.getContainer().clientTop+(b[3]-q.y)/(b[3]-b[1])*rect.height));
   }));
 }
-function commit(key,canvas,time,geometry,run,version) {
-  if(version!==generation) return false;
+function retained(panel) {return panel.time===undefined ? '' : `\nPrevious image retained: ${iso(panel.time)}.`;}
+async function commit(key,canvas,time,geometry,run,version) {
   const panel=panels[key];
-  const shown=key==='masked' ? panel.variants?.[$('maskedView').value] || canvas : canvas;
-  const overlay=L.imageOverlay(shown.toDataURL('image/png'),geometry.bounds,{
-    pane:'clouds',opacity:+$('opacity').value/100,interactive:false,
-    attribution:'Satellite © <a href="https://www.eumetsat.int/">EUMETSAT</a>'
-  }).addTo(panel.map);
-  panel.overlay?.remove();
-  Object.assign(panel,{overlay,canvas,time,geometry});
-  // Overlay registration is measured after the decoded data URL has loaded.
-  overlay.once('load',()=>{
-    if(version!==generation) return;
-    run[key].registrationErrorCssPx=registration(panel);showRecord();
-  });
-  if(key==='masked') $('saveClouds').disabled=false;
-  return true;
+  if(panel.renderer && !await panel.renderer.ready) throw new Error('Vector map unavailable; see map status');
+  if(version!==generation) return;
+  if(panel.renderer) await panel.renderer.putImage('skyflow-clouds',canvas.toDataURL(),geometry.bounds,+$('opacity').value/100);
+  else {
+    const overlay=L.imageOverlay(canvas.toDataURL(),geometry.bounds,{pane:'clouds',opacity:+$('opacity').value/100,interactive:false,
+      attribution:'Satellite © <a href="https://www.eumetsat.int/">EUMETSAT</a>'}).addTo(panel.map);
+    panel.overlay?.remove();panel.overlay=overlay;
+    overlay.once('load',()=>{if(version===generation) {run[key].registrationErrorCssPx=registration(panel);showRecord();}});
+  }
+  Object.assign(panel,{canvas,time,geometry});
+  if(panel.renderer) run[key].registrationErrorCssPx=registration(panel);
+  panel.status.dataset.state='ready';
+  panel.status.textContent=`Requested slot: ${iso(time)}\n${geometry.width} × ${geometry.height} px · ${(run[key].elapsedMs/1000).toFixed(2)} s`+
+    (key==='vector' ? '\nSame GeoColour pixels as panel 1; detailed map features above.' : '')+
+    (key==='provider' ? '\nPhotographic cloud overlay · requested time; acquisition time not independently verified.' : '');
 }
-
-async function loadPanel(key,time,geometry,run,version,signal) {
-  const started=performance.now(),panel=panels[key];
-  panel.status.dataset.state='loading';
-  panel.status.textContent=`Loading ${iso(time)}…`+retained(panel);
-  const loaded=[];
+function fail(key,error,run,version) {
+  if(version!==generation) return;
+  run[key]={state:'error',error:error.message};panels[key].status.dataset.state='error';
+  panels[key].status.textContent='Unavailable: '+error.message+retained(panels[key]);
+}
+async function loadGeoColour(time,geometry,run,version,signal) {
+  let result;
   try {
-    const layers=key==='baseline' ? [PRODUCTS.baseline] : [PRODUCTS.texture,PRODUCTS.mask];
-    // Keep fulfilled images available for cleanup if a sibling request fails.
-    const results=await Promise.allSettled(layers.map(async layer=>{
-      const result=await raster(imageURL(layer,time,geometry),signal,$('cacheMode').value);
-      loaded.push(result);return result;
-    }));
-    const failed=results.find(result=>result.status==='rejected');
-    if(failed) throw failed.reason;
-    const images=results.map(result=>result.value);
+    result=await raster(imageURL(PRODUCTS.baseline,time,geometry),signal,$('cacheMode').value);
     if(signal.aborted || version!==generation) return;
-    const transformed=key==='baseline' ? {canvas:canvasFor(images[0].image)} : photographicClouds(images[0].image,images[1].image,$('maskEdges').value);
-    const ms=Math.round(performance.now()-started);
-    run[key]={state:'ready',requestedSlotUTC:iso(time),differenceFromSelectionMinutes:(run.selectionEpoch-time)/60000,
-      elapsedMs:ms,sources:images.map(image=>image.measurement),maskEdges:key==='masked' ? $('maskEdges').value : null,mask:transformed.stats || null};
-    if(key==='masked') panel.variants={clouds:transformed.canvas,texture:canvasFor(images[0].image),mask:canvasFor(images[1].image)};
-    commit(key,transformed.canvas,time,geometry,run,version);
-    const unknown=transformed.stats?.unknown || 0;
-    let transparent=0;
-    if(transformed.stats) {
-      const alpha=transformed.canvas.getContext('2d').getImageData(0,0,geometry.width,geometry.height).data;
-      for(let i=3;i<alpha.length;i+=4) if(alpha[i]===0) transparent++;
-    }
-    panel.status.dataset.state='ready';
-    panel.status.textContent=`Requested slot: ${iso(time)}\n${geometry.width} × ${geometry.height} px · ${(ms/1000).toFixed(2)} s · ${images.map(image=>image.measurement.origin).join(' + ')}`+
-      `\n${(run.selectionEpoch-time)/60000} min before selected time`+
-      (transformed.stats ? `\nTransparent: ${((transparent/transformed.stats.total)*100).toFixed(1)}% · unrecognised: ${unknown} · palette blends: ${transformed.stats.blended}` : '')+
-      (unknown ? '\nUnrecognised classes omitted; inspect edges before judging this prototype.' : '');
-  } catch(error) {
-    if(signal.aborted || version!==generation) return;
-    run[key]={state:'error',error:error.message,requestedSlotUTC:iso(time),retainedSlotUTC:panel.time===undefined ? null : iso(panel.time)};
-    panel.status.dataset.state='error';
-    panel.status.textContent=`Unavailable: ${error.message}. Try another time or reload.`+retained(panel);
-  } finally {for(const result of loaded) result.image.close();}
+    const canvas=canvasFor(result.image);
+    for(const key of ['baseline','vector']) run[key]={state:'ready',requestedSlotUTC:iso(time),elapsedMs:result.measurement.elapsedMs,
+      sources:[result.measurement],sharedImage:true};
+    await commit('baseline',canvas,time,geometry,run,version);
+    try {await commit('vector',canvas,time,geometry,run,version);} catch(error) {fail('vector',error,run,version);}
+  } catch(error) {if(!signal.aborted) for(const key of ['baseline','vector']) fail(key,error,run,version);}
+  finally {result?.image.close();}
 }
-
+async function loadProvider(time,geometry,run,version,signal) {
+  let image;
+  try {
+    const started=performance.now(),query=new URLSearchParams({time:iso(time),bbox:geometry.bbox.join(','),width:geometry.width,height:geometry.height});
+    const blob=await timedFetch('/__lab/meteomatics?'+query,signal,30000,{cache:'no-store'});
+    if(!blob.type.includes('image/png')) throw new Error('Meteomatics returned an exception instead of PNG');
+    image=await createImageBitmap(blob);
+    if(signal.aborted || version!==generation) return;
+    run.provider={state:'ready',requestedSlotUTC:iso(time),elapsedMs:Math.round(performance.now()-started),product:'sat_cloud_layer:idx',bytes:blob.size};
+    await commit('provider',canvasFor(image),time,geometry,run,version);
+  } catch(error) {if(!signal.aborted) fail('provider',error,run,version);}
+  finally {image?.close();}
+}
 export async function loadComparison() {
   if(!metadata) return;
-  clearTimeout(moveTimer);request?.abort();const version=++generation;
-  const controller=new AbortController();request=controller;
-  $('overall').dataset.state='loading';$('overall').textContent='Loading comparison; previous images remain until ready…';
+  clearTimeout(moveTimer);request?.abort();const version=++generation,controller=new AbortController();request=controller;
+  $('overall').dataset.state='loading';$('overall').textContent='Loading the same GeoColour observation in both reference views…';
   try {
-    const time=selectedTime(),geometry=geometryFor(maps,+$('resolution').value);
-    const maskedTime=commonTime(metadata,[PRODUCTS.texture,PRODUCTS.mask],time);
-    const baselineTime=slotAtOrBefore(metadata[PRODUCTS.baseline],time);
-    const run={startedUTC:iso(Date.now()),selectionUTC:iso(time),selectionEpoch:time,
-      mapFeatures:mapFeatures.settings(),resolution:+$('resolution').value,cacheMode:$('cacheMode').value,crs:'EPSG:3857',bbox:geometry.bbox,
-      pixels:[geometry.width,geometry.height],view:{center:maps[0].getCenter(),zoom:maps[0].getZoom()},
-      baseline:null,masked:null,provider:{state:'inactive',reason:'Access and distribution terms not verified'}};
+    const time=selectedTime(),slot=slotAtOrBefore(metadata[PRODUCTS.baseline],time),geometry=geometryFor(maps,+$('resolution').value);
+    const enabled=$('providerEnabled').checked;
+    const run={startedUTC:iso(Date.now()),selectionUTC:iso(time),mapFeatures:mapFeatures.settings(),resolution:+$('resolution').value,
+      cacheMode:$('cacheMode').value,crs:'EPSG:3857',bbox:geometry.bbox,pixels:[geometry.width,geometry.height],
+      view:{center:maps[0].getCenter(),zoom:maps[0].getZoom()},baseline:null,vector:null,
+      provider:enabled ? null : {state:'inactive',reason:'Not enabled; satellite account access required'}};
     record.runs.push(run);if(record.runs.length>20) record.runs.shift();showRecord();
+    for(const key of enabled ? ['baseline','vector','provider'] : ['baseline','vector']) {
+      panels[key].status.dataset.state='loading';panels[key].status.textContent=`Loading ${iso(slot)}…`+retained(panels[key]);
+    }
     if($('radar').checked) loadRadar(time);
-    await Promise.all([loadPanel('baseline',baselineTime,geometry,run,version,controller.signal),
-      loadPanel('masked',maskedTime,geometry,run,version,controller.signal)]);
+    await Promise.all([loadGeoColour(slot,geometry,run,version,controller.signal),
+      enabled ? loadProvider(slot,geometry,run,version,controller.signal) : Promise.resolve()]);
     if(version!==generation) return;
-    const good=[run.baseline,run.masked].filter(result=>result?.state==='ready').length;
-    const difference=Math.abs(baselineTime-maskedTime)/60000;
-    $('overall').dataset.state=good===2 ? 'ready' : 'error';
-    $('overall').textContent=`${good}/2 active comparisons ready · requested product slots differ by ${difference} min.`+
-      (good===2 ? ' Inspect photographic detail and clear-area transparency.' : ' Previous images, if present, are labelled independently.');
     run.finishedUTC=iso(Date.now());showRecord();
-  } catch(error) {
-    if(version!==generation) return;
-    $('overall').dataset.state='error';$('overall').textContent=error.message;
-  }
+    const keys=enabled ? ['baseline','vector','provider'] : ['baseline','vector'],good=keys.filter(key=>run[key]?.state==='ready').length;
+    $('overall').dataset.state=good===keys.length ? 'ready' : 'error';
+    $('overall').textContent=`${good}/${keys.length} comparisons ready · panels 1 and 2 use identical GeoColour pixels and requested UTC time.`;
+  } catch(error) {if(version===generation) {$('overall').dataset.state='error';$('overall').textContent=error.message;}}
 }
-
 function radarImage(url,signal) {
   return new Promise(resolve=>{
     const image=new Image();let finished=false;
@@ -182,9 +156,12 @@ async function loadRadar(time) {
     if(!found) throw new Error('No IPMA image in the preceding 30 minutes');
     if(version!==radarGeneration || !$('radar').checked) return;
     for(const layer of radarLayers) layer.remove();
-    radarLayers=maps.map(map=>L.imageOverlay(found.url,[[34.011513,-12.454795],[43.792862,-4.345465]],{
-      pane:'rain',opacity:.75,interactive:false,attribution:'Radar © IPMA'
-    }).addTo(map));
+    const bounds=L.latLngBounds([[34.011513,-12.454795],[43.792862,-4.345465]]);
+    radarLayers=[L.imageOverlay(found.url,bounds,{pane:'rain',opacity:.75,interactive:false,attribution:'Radar © IPMA'}).addTo(maps[0])];
+    await Promise.all(Object.values(renderers).map(renderer=>renderer.putImage('skyflow-radar',found.url,bounds,.75)));
+    if(version!==radarGeneration || !$('radar').checked) {
+      for(const renderer of Object.values(renderers)) renderer.removeImage('skyflow-radar');return;
+    }
     radarStatus.textContent=`IPMA radar: ${iso(found.timestamp)} · ${(time-found.timestamp)/60000} min before selection · original IPMA bounds.`;
     record.radar={slotUTC:iso(found.timestamp),selectionUTC:iso(time)};showRecord();
   } catch(error) {
@@ -194,51 +171,51 @@ async function loadRadar(time) {
 }
 
 for(const map of maps) map.on('moveend',()=>{
-  if(syncing) return;
-  syncing=true;
+  if(syncing) return;syncing=true;
   for(const other of maps) if(other!==map) other.setView(map.getCenter(),map.getZoom(),{animate:false});
-  syncing=false;clearTimeout(moveTimer);
-  if(metadata) moveTimer=setTimeout(loadComparison,500);
+  syncing=false;clearTimeout(moveTimer);if(metadata) moveTimer=setTimeout(loadComparison,500);
 });
 $('controls').addEventListener('submit',event=>{event.preventDefault();loadComparison();});
 $('resolution').addEventListener('change',loadComparison);
-$('maskEdges').addEventListener('change',loadComparison);
-$('maskedView').addEventListener('change',()=>{
-  const panel=panels.masked,canvas=panel.variants?.[$('maskedView').value];
-  if(canvas) panel.overlay.setUrl(canvas.toDataURL('image/png'));
-});
 $('opacity').addEventListener('input',()=>{
-  $('opacityValue').value=$('opacity').value+'%';
-  for(const panel of Object.values(panels)) panel.overlay?.setOpacity(+$('opacity').value/100);
+  $('opacityValue').value=$('opacity').value+'%';panels.baseline.overlay?.setOpacity(+$('opacity').value/100);
+  for(const renderer of Object.values(renderers)) renderer.setOpacity(+$('opacity').value/100);
 });
 $('home').addEventListener('click',()=>maps[0].setView([39.2,-9.1],6,{animate:false}));
 $('latest').addEventListener('click',()=>initialize());
 $('radar').addEventListener('change',()=>{
   if($('radar').checked) {try {loadRadar(selectedTime());} catch(error) {radarStatus.textContent=error.message;}}
-  else {radarRequest?.abort();radarGeneration++;for(const layer of radarLayers) layer.remove();radarLayers=[];radarStatus.textContent='';record.radar=null;showRecord();}
+  else {radarRequest?.abort();radarGeneration++;for(const layer of radarLayers) layer.remove();radarLayers=[];
+    for(const renderer of Object.values(renderers)) renderer.removeImage('skyflow-radar');radarStatus.textContent='';record.radar=null;showRecord();}
 });
-$('export').addEventListener('click',()=>download(new Blob([JSON.stringify({...record,notes:$('notes').value},null,2)],{type:'application/json'}),'skyflow-cloud-comparison.json'));
-$('saveClouds').addEventListener('click',()=>panels.masked.canvas?.toBlob(blob=>{
-  if(blob) download(blob,`skyflow-clouds-${iso(panels.masked.time).replaceAll(':','-')}.png`);
-}));
-
-async function initialize() {
-  request?.abort();generation++;
-  const controller=new AbortController();request=controller;
-  $('overall').textContent='Reading satellite availability…';
+$('export').addEventListener('click',()=>{
+  const url=URL.createObjectURL(new Blob([JSON.stringify({...record,notes:$('notes').value},null,2)],{type:'application/json'}));
+  const link=document.createElement('a');link.href=url;link.download='skyflow-cloud-comparison.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+async function checkProvider() {
   try {
-    const available=await catalogue(controller.signal);
-    if(controller.signal.aborted) return;
-    metadata=available;
-    const time=commonTime(metadata,Object.values(PRODUCTS));
-    $('observation').value=iso(time).slice(0,16);
-    await loadComparison();
-  } catch(error) {
-    if(controller.signal.aborted) return;
-    $('overall').dataset.state='error';$('overall').textContent=`Availability failed: ${error.message}. Use Latest common time to retry.`;
-  }
+    const response=await fetch('/__lab/status',{cache:'no-store'});
+    const status=response.ok ? await response.json() : {};
+    $('providerEnabled').disabled=!status.meteomaticsConfigured;
+    if(!status.meteomaticsConfigured) {
+      $('providerEnabled').checked=false;renderers.provider.removeImage('skyflow-clouds');delete panels.provider.time;
+    }
+    panels.provider.status.textContent=status.meteomaticsConfigured ? 'Local connection configured. Enable Meteomatics to test satellite access.' :
+      'Awaiting access · run the local lab server with Meteomatics satellite credentials to enable this comparison.';
+  } catch {$('providerEnabled').disabled=true;panels.provider.status.textContent='Awaiting access · local Meteomatics connection is not running.';}
 }
-
-// Read-only diagnostics for repeatable browser checks; no credentials in state.
-window.cloudLab={maps,panels,mapFeatures,loadComparison,get record(){return record;},get metadata(){return metadata;},registration};
-initialize();
+$('providerRetry').addEventListener('click',checkProvider);
+$('providerEnabled').addEventListener('change',()=>{
+  if(!$('providerEnabled').checked) {renderers.provider.removeImage('skyflow-clouds');delete panels.provider.time;}
+  loadComparison();
+});
+async function initialize() {
+  request?.abort();generation++;const controller=new AbortController();request=controller;
+  $('overall').textContent='Reading GeoColour availability…';
+  try {
+    const available=await catalogue(controller.signal);if(controller.signal.aborted) return;metadata=available;
+    $('observation').value=iso(commonTime(metadata,Object.values(PRODUCTS))).slice(0,16);await loadComparison();
+  } catch(error) {if(!controller.signal.aborted) {$('overall').dataset.state='error';$('overall').textContent='Availability failed; use Latest GeoColour time to retry.';}}
+}
+window.cloudLab={maps,panels,mapFeatures,renderers,loadComparison,checkProvider,get record(){return record;},get metadata(){return metadata;},registration};
+checkProvider();initialize();

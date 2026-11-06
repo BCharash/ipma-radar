@@ -1237,6 +1237,40 @@ context, not a complete street map. Data provenance and a reproducible extractio
 script are recorded in [data/README.md](../data/README.md). Feature settings are
 included in comparison downloads. Production scripts are unchanged.
 
+## 6 November 2026 — Detailed vector-map and Meteomatics comparisons
+
+The user approved trying the full vector-map approach and requested removal of
+photographic clouds+mask from panel 2. They confirmed they have no Meteomatics
+access yet. The lab now compares (1) the regional-feature GeoColour reference,
+(2) the identical GeoColour canvas/UTC slot on live OpenFreeMap vector cartography,
+and (3) the optional Meteomatics photographic cloud product over that vector map.
+The mask UI, conversion and MSG catalogue requests were removed from the lab.
+
+Each vector panel uses one MapLibre renderer inside Leaflet. Base fills render
+below weather image sources, and road/name/boundary layers above them, including
+above optional radar. Linked pan/zoom, Low/High image requests, opacity and feature
+controls remain independent. Both GeoColour views share one decoded image and
+one public WMS request. A browser-compatible MapLibre build is pinned; vector
+visibility/strength preserve the style's top-level zoom expressions.
+
+Added a loopback-only Python lab server for the optional Meteomatics WMS request.
+It reads credentials interactively or from environment variables, retains them
+server-side, validates a fixed product and projected request geometry, and keeps
+provider image caching in bounded memory. No account access, free satellite tier
+or distribution permission is assumed. The panel clearly awaits access, while
+fixture tests exercise the connector without an account. Real provider image
+quality remains untested. See [current lab guide](cloud-lab.md) for exact local
+commands and limitations. Production scripts remain unchanged.
+
+Validation: live vector roads and text, identical GeoColour pixels/time, layer
+ordering, visibility and strength, source opacity, linked pan/coverage and stale
+responses passed in Chrome. A close Lisbon street view at Leaflet zoom 17 passed
+with street names rendered and approximately 0.86 CSS-pixel image-corner placement
+error. The measurement was corrected to exclude the map container's CSS border;
+regional Leaflet/vector errors measured about 0.23/0.44 pixels. Provider fixtures,
+mobile-width overflow checks and all five local connector tests passed. No real
+Meteomatics image was fetched. Physical iPhone/Safari remains unverified.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite
