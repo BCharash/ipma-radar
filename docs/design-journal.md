@@ -1056,6 +1056,53 @@ and registration after pan/zoom passed without JavaScript errors (placement
 error approximately 0.51 CSS pixels). Real iPhone/network timings remain to be
 measured; the app cannot guarantee remote-service response times.
 
+## 6 November 2026 — Progressive playback, paired readouts, and zoom reuse
+
+The user reported that enabling radar did not stop satellite animation, although
+disabling radar did. Both toggle directions now stop the current clock before
+changing its driver. Both readouts are shown together at the bottom of the map,
+with original frame index/loaded count and Lisbon-local time. The legend and
+status popup were moved above the readouts, leaving map attribution readable.
+Selected-frame counts were removed from the satellite header summary.
+
+The previous loader gave only the first observation a small preview, then loaded
+larger images for the history and disabled playback until preparation completed.
+It also rebuilt history for larger zoom changes. These behaviors are superseded.
+
+All satellite overview history now loads at a maximum 256-pixel side. Two workers
+start with the selected time and an earlier observation, so a slow newest slot
+need not block an earlier valid image. Playback becomes available once two
+observations are loaded. Remaining low-resolution frames arrive progressively.
+Each play-through snapshots observation times rather than relying on mutable
+array indices; insertion of older frames cannot jump the running clock. The
+next loop or a new Play incorporates the newly available observations. Combined
+playback during preparation begins within the available satellite time range.
+
+Zoom now lets Leaflet reproject the loaded overview history without rebuilding
+it or looking up a new catalogue. The paused observation can receive a separate
+higher-detail viewport image through `satelliteDetail.js` (512-pixel maximum
+side on smaller viewports, 768 otherwise). Only that time is requested. Detail
+uses its own matching WMS BBOX/Leaflet corners and the same observation time;
+the overview remains a fallback outside the detail rectangle. Refinement is
+canceled on playback, product changes, or superseding viewport requests. It is
+not performed while overview history is still loading. Refresh explicitly
+prepares history coverage for a newly explored region when needed.
+
+Validation: live Chrome and controlled browser delays passed both toggle
+interruptions, playback while history remained pending, stable clock time during
+frame arrivals, adoption of arrivals on the next loop, unique observation slots,
+side-by-side readouts clear of attribution, and one-frame zoom refinement with
+no change to the history generation or overview count. Both overview and detail
+registration passed a two-CSS-pixel tolerance (overview about 0.51 pixels).
+Memory/disk cache reuse, full-opacity outlines, standalone/combined animation,
+and update-failure retention/cancellation passed without JavaScript errors.
+
+In the final live one-hour hybrid sample, the first overview appeared at about
+1.22 seconds and six available observations were prepared in about 7.88 seconds;
+one unavailable observation was skipped. Other runs were slower, so these are
+connection/service samples, not a latency promise. Real iPhone/Safari behavior
+and the user's network timings remain acceptance checks.
+
 ## Remaining integration work
 
 - Confirm iPhone/Safari behavior after the script split, asset moves, and satellite
