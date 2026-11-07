@@ -19,38 +19,54 @@
 
 <div id="header">
 <div id="skyBackground" class="sky-background" aria-hidden="true">
-  <svg class="cloud-layer cloud-layer-back" viewBox="0 0 1200 240" fill="none">
-    <g id="skyBackClouds" opacity="0.35" filter="url(#cloudBlurHeavy)">
-      <ellipse cx="250" cy="90" rx="200" ry="60" fill="var(--cloud-back-fill, #ffffff)" />
-      <ellipse cx="450" cy="80" rx="240" ry="75" fill="var(--cloud-back-fill, #ffffff)" />
-      <ellipse cx="780" cy="95" rx="280" ry="70" fill="var(--cloud-back-fill, #ffffff)" />
-      <ellipse cx="1020" cy="85" rx="190" ry="55" fill="var(--cloud-back-fill, #ffffff)" />
+  <!-- High-altitude cloud tier (Cirrus wisps, ~6,000m - 12,000m) -->
+  <svg class="cloud-layer cloud-layer-high" viewBox="0 0 1400 240" fill="none">
+    <g id="skyHighClouds" opacity="0.35" filter="url(#cloudBlurCirrus)">
+      <path d="M40 45 Q 260 22, 520 38 T 960 32 T 1360 48" stroke="var(--cloud-high-fill, #ffffff)" stroke-width="26" stroke-linecap="round" />
+      <path d="M100 75 Q 360 55, 660 70 T 1140 60 T 1390 75" stroke="var(--cloud-high-fill, #ffffff)" stroke-width="20" stroke-linecap="round" />
+      <path d="M-30 95 Q 240 82, 540 92 T 940 86 T 1320 96" stroke="var(--cloud-high-fill, #ffffff)" stroke-width="16" stroke-linecap="round" />
     </g>
   </svg>
-  <svg class="cloud-layer cloud-layer-front" viewBox="0 0 1300 240" fill="none">
-    <g id="skyFrontClouds" opacity="0.65" filter="url(#cloudBlurMedium)">
-      <circle cx="180" cy="110" r="50" fill="var(--cloud-front-fill, #ffffff)" />
-      <circle cx="230" cy="95" r="70" fill="var(--cloud-front-fill, #ffffff)" />
-      <circle cx="310" cy="105" r="60" fill="var(--cloud-front-fill, #ffffff)" />
-      <ellipse cx="250" cy="125" rx="150" ry="40" fill="var(--cloud-front-fill, #ffffff)" />
 
-      <circle cx="680" cy="100" r="65" fill="var(--cloud-front-fill, #ffffff)" />
-      <circle cx="750" cy="85" r="80" fill="var(--cloud-front-fill, #ffffff)" />
-      <circle cx="830" cy="98" r="65" fill="var(--cloud-front-fill, #ffffff)" />
-      <ellipse cx="760" cy="120" rx="180" ry="45" fill="var(--cloud-front-fill, #ffffff)" />
-
-      <circle cx="1120" cy="105" r="55" fill="var(--cloud-front-fill, #ffffff)" />
-      <circle cx="1180" cy="90" r="70" fill="var(--cloud-front-fill, #ffffff)" />
-      <ellipse cx="1160" cy="125" rx="140" ry="38" fill="var(--cloud-front-fill, #ffffff)" />
+  <!-- Mid-altitude cloud tier (Altocumulus sheets, ~2,000m - 6,000m) -->
+  <svg class="cloud-layer cloud-layer-mid" viewBox="0 0 1200 240" fill="none">
+    <g id="skyMidClouds" opacity="0.45" filter="url(#cloudBlurHeavy)">
+      <ellipse cx="250" cy="85" rx="220" ry="55" fill="var(--cloud-mid-fill, #ffffff)" />
+      <ellipse cx="480" cy="75" rx="260" ry="70" fill="var(--cloud-mid-fill, #ffffff)" />
+      <ellipse cx="780" cy="90" rx="280" ry="65" fill="var(--cloud-mid-fill, #ffffff)" />
+      <ellipse cx="1040" cy="80" rx="200" ry="50" fill="var(--cloud-mid-fill, #ffffff)" />
     </g>
   </svg>
+
+  <!-- Low-altitude cloud tier (Cumulus/Stratus puffs, Surface - 2,000m) -->
+  <svg class="cloud-layer cloud-layer-low" viewBox="0 0 1300 240" fill="none">
+    <g id="skyLowClouds" opacity="0.60" filter="url(#cloudBlurMedium)">
+      <circle cx="180" cy="110" r="50" fill="var(--cloud-low-fill, #ffffff)" />
+      <circle cx="230" cy="95" r="70" fill="var(--cloud-low-fill, #ffffff)" />
+      <circle cx="310" cy="105" r="60" fill="var(--cloud-low-fill, #ffffff)" />
+      <ellipse cx="250" cy="125" rx="150" ry="40" fill="var(--cloud-low-fill, #ffffff)" />
+
+      <circle cx="680" cy="100" r="65" fill="var(--cloud-low-fill, #ffffff)" />
+      <circle cx="750" cy="85" r="80" fill="var(--cloud-low-fill, #ffffff)" />
+      <circle cx="830" cy="98" r="65" fill="var(--cloud-low-fill, #ffffff)" />
+      <ellipse cx="760" cy="120" rx="180" ry="45" fill="var(--cloud-low-fill, #ffffff)" />
+
+      <circle cx="1120" cy="105" r="55" fill="var(--cloud-low-fill, #ffffff)" />
+      <circle cx="1180" cy="90" r="70" fill="var(--cloud-low-fill, #ffffff)" />
+      <ellipse cx="1160" cy="125" rx="140" ry="38" fill="var(--cloud-low-fill, #ffffff)" />
+    </g>
+  </svg>
+
   <svg width="0" height="0" class="sky-filter-defs">
     <defs>
+      <filter id="cloudBlurCirrus" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="16" />
+      </filter>
       <filter id="cloudBlurHeavy" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="14" />
+        <feGaussianBlur stdDeviation="12" />
       </filter>
       <filter id="cloudBlurMedium" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur stdDeviation="7" />
+        <feGaussianBlur stdDeviation="6" />
       </filter>
     </defs>
   </svg>

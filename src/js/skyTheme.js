@@ -2,18 +2,26 @@
 
 /*
  * skyTheme.js
- * Astronomical solar calculations and dynamic atmospheric sky + cloud theming.
- * Adjusts the header background gradient, cloud lighting, and control contrast
- * to match the sun's elevation angle for the current time and location.
+ * Astronomical solar calculations and live meteorological cloud theming.
+ * Adjusts header sky gradients, multi-altitude cloud layers (High, Mid, Low),
+ * overcast desaturation, and control contrast based on real-time solar elevation
+ * and live weather observations.
  */
 
 const DEFAULT_SKY_COORDS = {
-  lat: 38.7223, // Lisbon, Portugal
-  lon: -9.1393
+  lat: 39.7436, // Leiria, Portugal
+  lon: -8.8071
 };
 
+const WEATHER_CACHE_KEY = "ipmaSkyLiveWeather";
+const WEATHER_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
 let currentSkyCoords = { ...DEFAULT_SKY_COORDS };
-let skyUpdateTimer = null;
+let skyMinuteTimer = null;
+let skyWeatherTimer = null;
+
+// Live meteorological cloud state
+let liveWeatherData = null;
 
 /**
  * Approximate the sun's elevation angle in degrees.
@@ -72,64 +80,180 @@ function getSolarElevation(date, lat, lon) {
 }
 
 /**
- * Determine the sky appearance palette for a given solar elevation.
+ * Fetch live cloud cover tiers from Open-Meteo.
+ * Free, open, no API key, cached in localStorage for 15 minutes.
  */
-function getSkyPalette(elevation) {
-  if (elevation > 12) {
-    // Broad Daylight
-    return {
-      gradient: "linear-gradient(180deg, #1d6fe9 0%, #4facfe 50%, #8ec5fc 100%)",
-      cloudBackFill: "#ffffff",
-      cloudFrontFill: "#ffffff",
-      cloudBackOpacity: 0.35,
-      cloudFrontOpacity: 0.65,
-      isDark: false
-    };
-  } else if (elevation > 3) {
-    // Golden Hour
-    return {
-      gradient: "linear-gradient(180deg, #25559c 0%, #d97706 65%, #fbbf24 100%)",
-      cloudBackFill: "#fde68a",
-      cloudFrontFill: "#fef3c7",
-      cloudBackOpacity: 0.45,
-      cloudFrontOpacity: 0.70,
-      isDark: false
-    };
-  } else if (elevation > -4) {
-    // Sunset / Sunrise / Civil Twilight
-    return {
-      gradient: "linear-gradient(180deg, #1e293b 0%, #9a3412 40%, #ea580c 70%, #f97316 100%)",
-      cloudBackFill: "#fdba74",
-      cloudFrontFill: "#fed7aa",
-      cloudBackOpacity: 0.50,
-      cloudFrontOpacity: 0.70,
-      isDark: true
-    };
-  } else if (elevation > -12) {
-    // Nautical Twilight / Dusk
-    return {
-      gradient: "linear-gradient(180deg, #090d1a 0%, #1e1b4b 50%, #312e81 100%)",
-      cloudBackFill: "#4338ca",
-      cloudFrontFill: "#6366f1",
-      cloudBackOpacity: 0.35,
-      cloudFrontOpacity: 0.55,
-      isDark: true
-    };
-  } else {
-    // Full Night
-    return {
-      gradient: "linear-gradient(180deg, #030712 0%, #0b1329 55%, #111d3d 100%)",
-      cloudBackFill: "#1e293b",
-      cloudFrontFill: "#334155",
-      cloudBackOpacity: 0.30,
-      cloudFrontOpacity: 0.50,
-      isDark: true
-    };
+async function fetchLiveWeather(lat, lon) {
+  // Check local cache first
+  try {
+    const cached = localStorage.getItem(WEATHER_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (
+        parsed &&
+        Date.now() - parsed.timestamp < WEATHER_CACHE_TTL_MS &&
+        Math.abs(parsed.lat - lat) < 0.2 &&
+        Math.abs(parsed.lon - lon) < 0.2
+      ) {
+        liveWeatherData = parsed;
+        updateSkyTheme();
+        return;
+      }
+    }
+  } catch (_) {}
+
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,weather_code,is_day`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return;
+
+    const data = await response.json();
+    if (data && data.current) {
+      liveWeatherData = {
+        total: typeof data.current.cloud_cover === "number" ? data.current.cloud_cover : 50,
+        low: typeof data.current.cloud_cover_low === "number" ? data.current.cloud_cover_low : 30,
+        mid: typeof data.current.cloud_cover_mid === "number" ? data.current.cloud_cover_mid : 30,
+        high: typeof data.current.cloud_cover_high === "number" ? data.current.cloud_cover_high : 30,
+        weatherCode: typeof data.current.weather_code === "number" ? data.current.weather_code : 0,
+        lat,
+        lon,
+        timestamp: Date.now()
+      };
+
+      try {
+        localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(liveWeatherData));
+      } catch (_) {}
+
+      updateSkyTheme();
+    }
+  } catch (err) {
+    // Non-blocking: continue with astronomical fallback
   }
 }
 
 /**
- * Apply the current sky theme to the header DOM.
+ * Interpolate the sky palette based on solar angle AND live cloud cover.
+ */
+function getSkyPalette(elevation, weather) {
+  const totalClouds = weather ? weather.total : 45;
+  const isOvercast = totalClouds >= 65;
+  const overcastFactor = Math.max(0, Math.min(1, (totalClouds - 50) / 45)); // 0 (clear) to 1 (full overcast)
+  const isRaining = weather && weather.weatherCode >= 51; // WMO codes >= 51 are rain, drizzle, or showers
+
+  let gradient = "";
+  let cloudHighFill = "#ffffff";
+  let cloudMidFill = "#ffffff";
+  let cloudLowFill = "#ffffff";
+  let isDark = false;
+
+  if (elevation > 12) {
+    // Broad Daylight
+    if (isRaining) {
+      gradient = "linear-gradient(180deg, #374151 0%, #4b5563 50%, #6b7280 100%)";
+      cloudHighFill = "#cbd5e1";
+      cloudMidFill = "#94a3b8";
+      cloudLowFill = "#64748b";
+      isDark = true;
+    } else if (overcastFactor > 0.4) {
+      // Overcast silver/slate sky
+      gradient = "linear-gradient(180deg, #5c6b7a 0%, #8292a1 50%, #a4b3c2 100%)";
+      cloudHighFill = "#e2e8f0";
+      cloudMidFill = "#cbd5e1";
+      cloudLowFill = "#94a3b8";
+      isDark = false;
+    } else {
+      // Clear azure / sky blue
+      gradient = "linear-gradient(180deg, #1d6fe9 0%, #4facfe 50%, #8ec5fc 100%)";
+      cloudHighFill = "#ffffff";
+      cloudMidFill = "#ffffff";
+      cloudLowFill = "#ffffff";
+      isDark = false;
+    }
+  } else if (elevation > 3) {
+    // Golden Hour
+    if (overcastFactor > 0.5) {
+      gradient = "linear-gradient(180deg, #334155 0%, #64748b 50%, #94a3b8 100%)";
+      cloudHighFill = "#cbd5e1";
+      cloudMidFill = "#94a3b8";
+      cloudLowFill = "#64748b";
+      isDark = false;
+    } else {
+      gradient = "linear-gradient(180deg, #25559c 0%, #d97706 65%, #fbbf24 100%)";
+      cloudHighFill = "#fed7aa";
+      cloudMidFill = "#fde68a";
+      cloudLowFill = "#fef3c7";
+      isDark = false;
+    }
+  } else if (elevation > -4) {
+    // Sunset / Sunrise / Civil Twilight
+    if (overcastFactor > 0.6) {
+      gradient = "linear-gradient(180deg, #1e293b 0%, #475569 50%, #64748b 100%)";
+      cloudHighFill = "#94a3b8";
+      cloudMidFill = "#64748b";
+      cloudLowFill = "#475569";
+      isDark = true;
+    } else {
+      gradient = "linear-gradient(180deg, #1e293b 0%, #9a3412 40%, #ea580c 70%, #f97316 100%)";
+      cloudHighFill = "#fed7aa";
+      cloudMidFill = "#fdba74";
+      cloudLowFill = "#fed7aa";
+      isDark = true;
+    }
+  } else if (elevation > -12) {
+    // Nautical Twilight / Dusk
+    gradient = "linear-gradient(180deg, #090d1a 0%, #1e1b4b 50%, #312e81 100%)";
+    cloudHighFill = "#4338ca";
+    cloudMidFill = "#475569";
+    cloudLowFill = "#334155";
+    isDark = true;
+  } else {
+    // Full Night
+    if (overcastFactor > 0.6) {
+      gradient = "linear-gradient(180deg, #020617 0%, #0b1120 55%, #151f38 100%)";
+    } else {
+      gradient = "linear-gradient(180deg, #030712 0%, #0b1329 55%, #111d3d 100%)";
+    }
+    cloudHighFill = "#1e293b";
+    cloudMidFill = "#1e293b";
+    cloudLowFill = "#334155";
+    isDark = true;
+  }
+
+  // Calculate separate opacities for the 3 altitude tiers
+  let highOpacity = 0.35;
+  let midOpacity = 0.45;
+  let lowOpacity = 0.60;
+
+  if (weather) {
+    // High clouds (Cirrus wisps): delicate, wide spread
+    highOpacity = Math.max(0.06, (weather.high / 100) * 0.75);
+    // Mid clouds (Altocumulus sheets): moderate density
+    midOpacity = Math.max(0.08, (weather.mid / 100) * 0.85);
+    // Low clouds (Cumulus/Stratus puffs): heavy, dominant
+    lowOpacity = Math.max(0.12, (weather.low / 100) * 0.95);
+
+    // If total cloud cover is very high, boost low clouds to form a continuous ceiling
+    if (weather.total > 75) {
+      lowOpacity = Math.max(lowOpacity, 0.78);
+      midOpacity = Math.max(midOpacity, 0.65);
+    }
+  }
+
+  return {
+    gradient,
+    cloudHighFill,
+    cloudMidFill,
+    cloudLowFill,
+    highOpacity,
+    midOpacity,
+    lowOpacity,
+    isDark
+  };
+}
+
+/**
+ * Apply the current sky theme and multi-tier cloud properties to the header DOM.
  */
 function updateSkyTheme() {
   const header = document.getElementById("header");
@@ -137,20 +261,25 @@ function updateSkyTheme() {
 
   const now = new Date();
   const elevation = getSolarElevation(now, currentSkyCoords.lat, currentSkyCoords.lon);
-  const palette = getSkyPalette(elevation);
+  const palette = getSkyPalette(elevation, liveWeatherData);
 
   header.style.setProperty("--sky-gradient", palette.gradient);
-  header.style.setProperty("--cloud-back-fill", palette.cloudBackFill);
-  header.style.setProperty("--cloud-front-fill", palette.cloudFrontFill);
+  header.style.setProperty("--cloud-high-fill", palette.cloudHighFill);
+  header.style.setProperty("--cloud-mid-fill", palette.cloudMidFill);
+  header.style.setProperty("--cloud-low-fill", palette.cloudLowFill);
 
-  const backGroup = document.getElementById("skyBackClouds");
-  const frontGroup = document.getElementById("skyFrontClouds");
+  const highGroup = document.getElementById("skyHighClouds");
+  const midGroup = document.getElementById("skyMidClouds");
+  const lowGroup = document.getElementById("skyLowClouds");
 
-  if (backGroup) {
-    backGroup.setAttribute("opacity", String(palette.cloudBackOpacity));
+  if (highGroup) {
+    highGroup.setAttribute("opacity", palette.highOpacity.toFixed(2));
   }
-  if (frontGroup) {
-    frontGroup.setAttribute("opacity", String(palette.cloudFrontOpacity));
+  if (midGroup) {
+    midGroup.setAttribute("opacity", palette.midOpacity.toFixed(2));
+  }
+  if (lowGroup) {
+    lowGroup.setAttribute("opacity", palette.lowOpacity.toFixed(2));
   }
 
   if (palette.isDark) {
@@ -165,8 +294,16 @@ function updateSkyTheme() {
  */
 function setSkyLocation(lat, lon) {
   if (typeof lat === "number" && typeof lon === "number") {
+    const movedSignificantly =
+      Math.abs(currentSkyCoords.lat - lat) > 0.2 ||
+      Math.abs(currentSkyCoords.lon - lon) > 0.2;
+
     currentSkyCoords = { lat, lon };
     updateSkyTheme();
+
+    if (movedSignificantly) {
+      fetchLiveWeather(lat, lon);
+    }
   }
 }
 
@@ -175,10 +312,19 @@ function setSkyLocation(lat, lon) {
  */
 function initSkyTheme() {
   updateSkyTheme();
+  fetchLiveWeather(currentSkyCoords.lat, currentSkyCoords.lon);
 
-  // Update every minute to track the sun smoothly
-  if (skyUpdateTimer) {
-    clearInterval(skyUpdateTimer);
+  // Update solar angle every minute
+  if (skyMinuteTimer) {
+    clearInterval(skyMinuteTimer);
   }
-  skyUpdateTimer = setInterval(updateSkyTheme, 60000);
+  skyMinuteTimer = setInterval(updateSkyTheme, 60000);
+
+  // Refresh live weather conditions every 15 minutes
+  if (skyWeatherTimer) {
+    clearInterval(skyWeatherTimer);
+  }
+  skyWeatherTimer = setInterval(() => {
+    fetchLiveWeather(currentSkyCoords.lat, currentSkyCoords.lon);
+  }, WEATHER_CACHE_TTL_MS);
 }
