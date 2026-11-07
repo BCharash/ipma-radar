@@ -67,7 +67,37 @@ try:
         if c.evaluate('typeof initializeSatellite === "function" && typeof radarFrames !== "undefined" && !!map'): break
         time.sleep(.2)
     print('STARTUP', c.evaluate('({errors:testErrors, overflow:document.documentElement.scrollWidth>innerWidth})'), flush=True)
-    assert c.evaluate('satelliteSelect.value==="hybrid" && geoColourMapState.desired && satelliteHighEnabled && !document.getElementById("satelliteQuality")')
+    assert c.evaluate('satelliteSelect.value==="map" && radarToggle.checked && !geoColourMapState.desired && satelliteHighEnabled && !document.getElementById("satelliteQuality")')
+    result=c.evaluate("""(async()=>{
+      cancelSatellitePreload();
+      const originalCatalogue=getSatelliteCatalogue, originalLoad=loadSatelliteImage;
+      const originalHistory=historySelect.value;
+      const calls=[];
+      try{
+        historySelect.value='1';
+        getSatelliteCatalogue=async()=>({[SATELLITE_PRODUCTS.hybrid.layer]:{
+          timestamp:'2026-11-07T12:00:00Z',stepMs:600000}});
+        loadSatelliteImage=async(url,signal)=>{
+          const q=new URL(url).searchParams;
+          calls.push(Math.max(Number(q.get('width')),Number(q.get('height'))));
+          return {};
+        };
+        await preloadGeoColour();
+        const ordered=calls.length===14 && calls.slice(0,7).every(n=>n===256) && calls.slice(7).every(n=>n>256);
+        const hidden=satelliteSelect.value==='map' && satelliteFrames.length===0 && !satelliteLoading && !geoColourMapState.desired;
+        await preloadGeoColour();
+        const reused=calls.length===14;
+        calls.length=0;
+        loadSatelliteImage=async()=>{calls.push(256);cancelSatellitePreload();return null;};
+        await preloadGeoColour(true);
+        return {ordered,hidden,reused,cancelled:calls.length===1 && satellitePreloadRequest===null};
+      }finally{
+        getSatelliteCatalogue=originalCatalogue;loadSatelliteImage=originalLoad;
+        historySelect.value=originalHistory;satellitePreloadKey=null;
+      }
+    })()""")
+    print('GECOLOUR_PRELOAD',result,flush=True)
+    assert all(result.values()),result
     result=c.evaluate("(async()=>{historySelect.value='1'; await Promise.all([rebuildRadar(),updateSatellite()]);return {frames:radarFrames.length,errors:testErrors};})()")
     print('RADAR',result,flush=True)
     assert result['frames'] > 1 and not result['errors']

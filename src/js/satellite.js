@@ -29,6 +29,72 @@ let satelliteLoadTimings = {};
 let satelliteRequestedDates = [];
 let satelliteRequestedProduct = null;
 const satelliteScenes = [];
+let satellitePreloadRequest = null;
+let satellitePreloadTimer = null;
+let satellitePreloadKey = null;
+
+function cancelSatellitePreload(){
+  clearTimeout(satellitePreloadTimer);
+  satellitePreloadTimer = null;
+  satellitePreloadRequest?.abort();
+  satellitePreloadRequest = null;
+}
+
+function queueSatellitePreload(force=false){
+  cancelSatellitePreload();
+  if(satelliteSelect.value !== "map") return;
+  satellitePreloadTimer = setTimeout(() => {
+    satellitePreloadTimer = null;
+    preloadGeoColour(force);
+  },400);
+}
+
+// Warm the same source-image cache used by visible satellite playback. No
+// overlays, playback state, status messages or vector maps are created here.
+async function preloadGeoColour(force=false){
+  if(satelliteSelect.value !== "map" || satellitePreloadRequest) return;
+  const request = new AbortController();
+  satellitePreloadRequest = request;
+  const timeout = setTimeout(() => request.abort(),60000);
+  try{
+    const product = SATELLITE_PRODUCTS.hybrid;
+    const catalogue = await getSatelliteCatalogue(request.signal,force,product.layer);
+    if(request.signal.aborted || satelliteSelect.value !== "map") return;
+    const metadata = catalogue[product.layer];
+    if(!metadata) return;
+    const high = satelliteGeometry();
+    const key = [metadata.timestamp,historySelect.value,high.bbox.join(),high.width,high.height].join("|");
+    if(!force && satellitePreloadKey === key) return;
+    const scale = 256/Math.max(high.width,high.height);
+    const low = {...high,width:Math.max(1,Math.round(high.width*scale)),
+      height:Math.max(1,Math.round(high.height*scale))};
+    const newest = Date.parse(metadata.timestamp);
+    const oldest = newest-Number(historySelect.value)*3600000;
+    const dates = [];
+    for(let time=newest;time>=oldest;time-=metadata.stepMs) dates.push(new Date(time));
+    let complete = true;
+    // Finish the entire Low pass before starting High; newest observations first.
+    for(const geometry of satelliteHighEnabled ? [low,high] : [low]){
+      let next = 0;
+      await Promise.all(Array.from({length:Math.min(SATELLITE_CONCURRENT_REQUESTS,dates.length)},async () => {
+        while(next < dates.length && !request.signal.aborted){
+          const date = dates[next++];
+          const image = await loadSatelliteImage(satelliteImageURL(product,date,geometry),request.signal,15000);
+          if(!image) complete = false;
+        }
+      }));
+      if(request.signal.aborted) return;
+    }
+    if(complete) satellitePreloadKey = key;
+  }
+  catch(error){
+    // Background warming is optional; normal selection can retry unavailable data.
+  }
+  finally{
+    clearTimeout(timeout);
+    if(satellitePreloadRequest === request) satellitePreloadRequest = null;
+  }
+}
 
 const satelliteSelect = document.getElementById("satelliteSelect");
 const satelliteStatus = document.getElementById("satelliteStatus");
@@ -194,6 +260,7 @@ function syncSatelliteToRadar(time=playbackTime){
 }
 
 async function updateSatellite(force=false,coverageOnly=false){
+  cancelSatellitePreload();
   const started = performance.now();
   clearTimeout(satelliteMoveTimer);
   const previousLoading=satelliteLoading;
@@ -217,6 +284,7 @@ async function updateSatellite(force=false,coverageOnly=false){
     removeSatelliteLayer();
     setSatelliteStatus("");
     updateFrameCounter();
+    queueSatellitePreload(force);
     return;
   }
   const oldFrames = satelliteFrames;
@@ -401,7 +469,10 @@ function initializeSatellite(){
     syncSatelliteToRadar();
     clearTimeout(satelliteMoveTimer);
     satelliteMoveTimer = setTimeout(() => {
-      if(!SATELLITE_PRODUCTS[satelliteSelect.value]) return;
+      if(!SATELLITE_PRODUCTS[satelliteSelect.value]){
+        queueSatellitePreload();
+        return;
+      }
       const geometry = satelliteGeometry();
       const uncovered = !satelliteFrames.length || satelliteFrames.some(frame =>
         frame.geometry.bbox.join() !== geometry.bbox.join());

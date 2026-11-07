@@ -13,6 +13,12 @@ satellite** in the View selector. Toggle **Rain radar** independently. Map
 with radar enabled is the default. Separate **Satellite** and **Radar** opacity sliders
 let the street map show through; satellite starts at 60% opacity.
 
+While Map is selected, GeoColour history preloads into the image cache in the
+background: Low first, then High. The map and radar remain visible. Selecting a
+satellite view stops background preloading and uses cached images where available.
+Moving the map or changing history prepares the corresponding GeoColour scene;
+new observations or uncached areas can still need loading when selected.
+
 Satellite imagery comes from EUMETSAT's public EUMETView WMS and requires no API
 key, account, or proxy. Visible uses MTG VIS0.6, infrared uses MSG IR10.8, and
 GeoColour uses MTG Geo Colour. Visible imagery needs daylight; GeoColour is a provider
