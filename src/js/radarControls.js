@@ -113,14 +113,14 @@ function updateFrameCounter(){
   }
   const progress=satelliteHighProgress;
   const showHigh=satelliteHighEnabled && !satelliteReadout.hidden && progress;
+  const highStatus=document.getElementById("satelliteHighStatus");
+  highStatus.hidden=!showHigh;
+  highStatus.textContent="";
   if(showHigh){
-    const line=document.createElement("span");
-    line.className="satellite-high-progress";
-    line.textContent=progress.finished
+    highStatus.textContent=progress.finished
       ? "High ready " + progress.ready + "/" + progress.frames.length + " · " +
-        (progress.frames.length-progress.ready) + " Low fallbacks" + (satelliteQualityPending ? " · queued" : "")
-      : progress.processed + "/" + progress.frames.length + " processed · " + progress.ready + " High ready";
-    satelliteReadout.appendChild(line);
+        (progress.frames.length-progress.ready) + " Low fallbacks" + (satelliteQualityPending ? " · switching after this pass…" : "")
+      : "High " + progress.processed + "/" + progress.frames.length + " processed · " + progress.ready + " ready";
   }
   satelliteHighRetry.hidden=!(showHigh && progress.finished && progress.ready<progress.frames.length);
   satelliteHighRetry.disabled=!!satelliteDetailRequest || satelliteLoading || !!satelliteCoveragePending;

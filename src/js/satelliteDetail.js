@@ -109,8 +109,6 @@ async function refineSatelliteFrame(){
         satelliteHighProgress.processed=completed;
         satelliteHighProgress.ready=details.size;
         updateFrameCounter();
-        setSatelliteStatus("High " + completed + "/" + frames.length +
-          " processed · " + details.size + " ready · current playback retained…");
       }
     }));
     if(request.signal.aborted || generation !== satelliteDetailGeneration) return;
@@ -118,9 +116,6 @@ async function refineSatelliteFrame(){
       satelliteFrames.includes(frame));
     satelliteQualityPending = complete && satelliteHighEnabled;
     satelliteHighProgress.finished=true;
-    if(satelliteQualityPending && playing)
-      setSatelliteStatus("High ready " + details.size + "/" + frames.length +
-        " · " + (frames.length-details.size) + " Low fallbacks · switching after this pass…");
   }
   finally{
     if(satelliteDetailRequest === request) satelliteDetailRequest = null;

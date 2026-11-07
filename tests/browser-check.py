@@ -251,13 +251,13 @@ try:
         playbackCursor=playbackTimeline.length-1;await sleep(220);
         displayPlaybackTime(+missing.date);
         const missingUsesLow=satelliteQualityActive==='high' && satelliteLayer===missing.overlay;
-        const fallbackReported=document.getElementById('satelliteFrameCounter').textContent.includes('1 Low fallbacks') &&
+        const fallbackReported=document.getElementById('satelliteHighStatus').textContent.includes('1 Low fallbacks') &&
           !satelliteHighRetry.hidden;
         let otherFramesUseHigh=true;
         for(const frame of satelliteFrames.filter(frame=>frame!==missing)){
           displayPlaybackTime(+frame.date);otherFramesUseHigh=otherFramesUseHigh && satelliteLayer===frame.detail.overlay;
         }
-        const persistentCount=document.getElementById('satelliteFrameCounter').textContent.includes(
+        const persistentCount=document.getElementById('satelliteHighStatus').textContent.includes(
           'High ready '+(satelliteFrames.length-1)+'/'+satelliteFrames.length);
         queueSatelliteRefinement();
         const noAutomaticRetry=satelliteDetailTimer===null && !satelliteDetailRequest;
@@ -270,14 +270,17 @@ try:
         satelliteHighRetry.click();clearTimeout(satelliteDetailTimer);satelliteDetailTimer=null;
         const explicitRetryClearsFailure=!satelliteFailedUntil.has(retryURL);
         const retry=refineSatelliteFrame();await sleep(10);
-        const retryStartsAtZero=document.getElementById('satelliteFrameCounter').textContent.includes('processed');
+        const retryProgressInStatus=document.getElementById('satelliteHighStatus').textContent.includes('processed') &&
+          !document.getElementById('satelliteHighStatus').hidden &&
+          document.getElementById('satelliteHighStatus').compareDocumentPosition(document.getElementById('opacityControls'))===Node.DOCUMENT_POSITION_FOLLOWING &&
+          !document.getElementById('satelliteFrameCounter').textContent.includes('processed');
         releaseRetry();await retry;
         displayPlaybackTime(+missing.date);
         const retryHeldUntilBoundary=satelliteLayer===missing.overlay && !missing.detail && satelliteQualityPending;
         playbackCursor=playbackTimeline.length-1;await sleep(220);
         displayPlaybackTime(+missing.date);
         const retryUpgradesAtBoundary=satelliteLayer===missing.detail.overlay && satelliteHighRetry.hidden &&
-          document.getElementById('satelliteFrameCounter').textContent.includes('0 Low fallbacks');
+          document.getElementById('satelliteHighStatus').textContent.includes('0 Low fallbacks');
         satelliteHighEnabled=false;cancelSatelliteRefinement();satelliteQualityActive='low';syncSatelliteToRadar();
         const retainedDetails=satelliteFrames.map(frame=>frame.detail);
         for(const frame of satelliteFrames)delete frame.detail;
@@ -344,7 +347,7 @@ try:
         const radar=document.getElementById('radarFrameCounter'),sat=document.getElementById('satelliteFrameCounter');
         const sideBySide=Math.abs(radar.getBoundingClientRect().top-sat.getBoundingClientRect().top)<2 && radar.getBoundingClientRect().right<=sat.getBoundingClientRect().left;
         return {lowFinishesBeforeHigh,autoHighStarted,newestFirst,playableWhileLoading,repeatsWhileLoading,togglesContinue,arrivalsKeepClock,historyAdopted,
-          lowUntilComplete,lateHighRespectsLow,waitsForBoundary,allHigh,highReadout,uniformHigh,lowInstant,lowReadout,highReuse,partialWaitsForBoundary,missingUsesLow,fallbackReported,otherFramesUseHigh,persistentCount,noAutomaticRetry,explicitRetryClearsFailure,allFailedUsesLow,retryStartsAtZero,retryHeldUntilBoundary,retryUpgradesAtBoundary,coverageKeepsClock,keepsWholeMovie,waitsForCoverageBoundary,expanded,zoomNewestFirst,failedCoverageRetainsMovie,pausedCoverageCommits,initialHistorySurvivesReframe,
+          lowUntilComplete,lateHighRespectsLow,waitsForBoundary,allHigh,highReadout,uniformHigh,lowInstant,lowReadout,highReuse,partialWaitsForBoundary,missingUsesLow,fallbackReported,otherFramesUseHigh,persistentCount,noAutomaticRetry,explicitRetryClearsFailure,allFailedUsesLow,retryProgressInStatus,retryHeldUntilBoundary,retryUpgradesAtBoundary,coverageKeepsClock,keepsWholeMovie,waitsForCoverageBoundary,expanded,zoomNewestFirst,failedCoverageRetainsMovie,pausedCoverageCommits,initialHistorySurvivesReframe,
           registered:registrationError<2,noFutureFrames,sideBySide,errors:testErrors};
       }finally{
         releaseHistory();releaseHigh();releaseCoverage();stopPlayback(false);cancelSatelliteRefinement();

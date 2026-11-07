@@ -42,14 +42,14 @@ invented between frames. These animations show observed history, not a forecast.
 
 Both radar toggle directions change visibility without stopping or restarting
 playback. Radar and satellite frame numbers and Lisbon-local times appear side
-by side at the bottom of the map. Every satellite view, including the initial
-GeoColour view, automatically loads Low previews first (256-pixel maximum side),
+by side at the bottom of the map. Every satellite view automatically loads Low
+previews first (256-pixel maximum side),
 then prepares High for the same observations (512 pixels on a small viewport,
 768 otherwise). There is no Low/High selector. Processed and ready counts remain
-visible while the current movie continues.
+visible in the status area above the opacity sliders while the current movie continues.
 After every request succeeds, fails or times out, it switches the prepared sequence
 at the next playback boundary, or immediately while paused. Unavailable High
-images use their matching Low frames. The persistent readout reports, for example,
+images use their matching Low frames. That status area reports, for example,
 **High ready 16/19 · 3 Low fallbacks**. **Retry High** retries the missing images,
 reusing successful ones and applying recovered images at the next boundary.
 It also bypasses the temporary failed-request deferral for those images.
