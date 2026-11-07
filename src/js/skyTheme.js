@@ -40,7 +40,10 @@ function getSkyCondition(code){
     [[96,99], "Thunderstorm with Hail", "storm", "rain"]
   ];
   const entry=definitions.find(([codes])=>codes.includes(code));
-  return entry ? {label:entry[1],icon:entry[2],precipitation:entry[3]} :
+  const intensity=[51,56,61,66,71,77,80,85].includes(code) ? "light" :
+    [55,57,65,67,75,82,86,96,97,99].includes(code) ? "heavy" : "moderate";
+  return entry ? {label:entry[1],icon:entry[2],precipitation:entry[3],intensity,
+    drizzle:[51,53,55,56,57].includes(code)} :
     {label:"Conditions unavailable",icon:"unknown",precipitation:null};
 }
 
@@ -301,8 +304,8 @@ function getSkyPalette(elevation, weather) {
     isDark = true;
   }
 
-  // Independent model tiers: zero or missing cover produces no invented cloud.
-  const opacity=(cover,maximum)=>Number.isFinite(cover) ? Math.max(0,Math.min(100,cover))/100*maximum : 0;
+  // Coverage controls patch count/size; tier opacity remains independently tuned.
+  const opacity=(cover,maximum)=>Number.isFinite(cover) && cover>0 ? maximum : 0;
   const highOpacity=opacity(weather?.high,0.75);
   const midOpacity=opacity(weather?.mid,0.85);
   const lowOpacity=opacity(weather?.low,0.95);
@@ -317,6 +320,45 @@ function getSkyPalette(elevation, weather) {
     lowOpacity,
     isDark
   };
+}
+
+// Fixed placements and ranking distribute growing patches across the banner.
+// Repeated weather updates reuse nodes and never randomize the arrangement.
+function renderSkyClouds(group,tier,cover,opacity){
+  if(!group) return;
+  const count=24;
+  const widths={high:1400,mid:1200,low:1300};
+  if(!group.children.length){
+    const ns="http://www.w3.org/2000/svg";
+    for(let i=0;i<count;i++){
+      const outer=document.createElementNS(ns,"g");
+      const x=(i%8+0.5)*widths[tier]/8;
+      const y=30+Math.floor(i/8)*80+((i*13)%17-8);
+      outer.setAttribute("transform",`translate(${x} ${y})`);
+      const patch=document.createElementNS(ns,"g");
+      patch.classList.add("sky-cloud-patch");
+      patch.style.opacity="0";
+      patch.style.transform="scale(0)";
+      const width=0.9+(i*11%19)/50;
+      if(tier==="high"){
+        patch.innerHTML=`<path d="M -95 0 Q -30 -14 25 -2 T 100 -6 M -65 15 Q 0 5 85 12" stroke="var(--cloud-high-fill)" stroke-width="9" stroke-linecap="round" transform="scale(${width} 1)"/>`;
+      }else if(tier==="mid"){
+        patch.innerHTML=`<ellipse rx="100" ry="39" fill="var(--cloud-mid-fill)" transform="scale(${width} 1)"/>`;
+      }else{
+        patch.innerHTML=`<g fill="var(--cloud-low-fill)" transform="scale(${width} 1)"><ellipse cy="15" rx="100" ry="30"/><circle cx="-52" r="30"/><circle cx="-10" cy="-10" r="38"/><circle cx="40" cy="-4" r="33"/></g>`;
+      }
+      outer.appendChild(patch);group.appendChild(outer);
+    }
+  }
+  const amount=Number.isFinite(cover) ? Math.max(0,Math.min(100,cover))/100 : 0;
+  group.setAttribute("opacity",opacity.toFixed(2));
+  Array.from(group.children).forEach((outer,i)=>{
+    const rank=(i*7)%count;
+    const growth=Math.max(0,Math.min(1,amount*count-rank));
+    const patch=outer.firstElementChild;
+    patch.style.opacity=String(growth);
+    patch.style.transform=`scale(${growth ? 0.3+0.85*growth : 0})`;
+  });
 }
 
 /**
@@ -343,21 +385,22 @@ function updateSkyTheme() {
   const midGroup = document.getElementById("skyMidClouds");
   const lowGroup = document.getElementById("skyLowClouds");
 
-  if (highGroup) {
-    highGroup.setAttribute("opacity", palette.highOpacity.toFixed(2));
-  }
-  if (midGroup) {
-    midGroup.setAttribute("opacity", palette.midOpacity.toFixed(2));
-  }
-  if (lowGroup) {
-    lowGroup.setAttribute("opacity", palette.lowOpacity.toFixed(2));
-  }
+  renderSkyClouds(highGroup,"high",weather?.high,palette.highOpacity);
+  renderSkyClouds(midGroup,"mid",weather?.mid,palette.midOpacity);
+  renderSkyClouds(lowGroup,"low",weather?.low,palette.lowOpacity);
 
-  const precipitation=getSkyCondition(weather?.weatherCode).precipitation;
+  const condition=getSkyCondition(weather?.weatherCode);
   const rainLayer=document.getElementById("skyRainLayer");
   const snowLayer=document.getElementById("skySnowLayer");
-  if(rainLayer) rainLayer.hidden=precipitation!=="rain";
-  if(snowLayer) snowLayer.hidden=precipitation!=="snow";
+  if(rainLayer){
+    rainLayer.hidden=condition.precipitation!=="rain";
+    rainLayer.dataset.intensity=condition.intensity || "light";
+    rainLayer.dataset.drizzle=String(!!condition.drizzle);
+  }
+  if(snowLayer){
+    snowLayer.hidden=condition.precipitation!=="snow";
+    snowLayer.dataset.intensity=condition.intensity || "light";
+  }
 
   // Option C: Nighttime Moon Phase & Starfield
   const moonContainer = document.getElementById("skyMoonContainer");

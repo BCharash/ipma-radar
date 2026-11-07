@@ -57,69 +57,65 @@ which lack condition time, are ignored.
 Open-Meteo describes current conditions as weather-model data, not direct local
 observations. See [API documentation](https://open-meteo.com/en/docs).
 
-## How the cloud tiers work
+## How the cloud tiers work — coverage-driven version
 
-Three SVG drawings in `index.html` are layered behind the controls. The shapes
-are fixed artwork. They do not identify actual cloud species or positions from
-the API. Separate model percentages control how strongly each drawing appears.
-The model altitude bands below follow Open-Meteo's variable definitions.
+Each tier now contains 24 stable procedural SVG patches: eight columns in three
+rows. The artwork is generated once in `renderSkyClouds()` and reused. The
+percentages control patch count and growth, rather than making one large fixed
+cloud drawing progressively more transparent.
 
-| Tier | Model band | Artwork | SVG blur | Maximum opacity | Drift cycle |
-| --- | --- | --- | --- | --- | --- |
-| High | 8 km and above | Long curved strokes, suggesting wisps | 16 | 0.75 | 320 seconds |
-| Mid | 3–8 km | Overlapping wide ellipses, suggesting sheets | 12 | 0.85 | 240 seconds |
-| Low | Up to 3 km, including fog | Circles and ellipses, suggesting rounded puffs | 6 | 0.95 | 160 seconds |
+| Tier | API input | Model band | Patch artwork | Blur | Layer opacity when present | Drift |
+| --- | --- | --- | --- | --- | --- | --- |
+| High | `cloud_cover_high` → `high` | 8 km and above | Long curved wisps | 16 | 0.75 | 320 s |
+| Mid | `cloud_cover_mid` → `mid` | 3–8 km | Broad overlapping ellipses | 12 | 0.85 | 240 s |
+| Low | `cloud_cover_low` → `low` | Up to 3 km, including fog | Rounded puffs and broad bases | 6 | 0.95 | 160 s |
 
-The input path is explicit:
+These altitude bands follow [Open-Meteo's variable definitions](https://open-meteo.com/en/docs).
+`cloud_cover` → `total` separately selects palette/night visibility; it does not
+create missing tiers. The layer opacity values are artistic tuning independent
+of the cover percentage, not meteorological conversions.
 
-| API field | Normalized state | Drawing | Applied opacity |
-| --- | --- | --- | --- |
-| `cloud_cover_low` | `liveWeatherData.low` | `#skyLowClouds` | `low / 100 × 0.95` |
-| `cloud_cover_mid` | `liveWeatherData.mid` | `#skyMidClouds` | `mid / 100 × 0.85` |
-| `cloud_cover_high` | `liveWeatherData.high` | `#skyHighClouds` | `high / 100 × 0.75` |
-| `cloud_cover` | `liveWeatherData.total` | Palette and night visibility | Does not supply tier opacity |
-
-For each tier:
+For patch index `i` from 0 to 23:
 
 ```text
-opacity = clamp(model cloud cover, 0, 100) / 100 × maximum opacity
+amount = clamp(cover, 0, 100) / 100
+rank = (i × 7) modulo 24
+patch growth = clamp(amount × 24 − rank, 0, 1)
+patch opacity = patch growth
+patch scale = 0 when growth is zero; otherwise 0.3 + 0.85 × growth
 ```
 
-For example, 80% high cover and 0% low/mid cover gives high opacity 0.60 and
-zero opacity for the other drawings. No low cloud is added just because total
-cloud cover is high. At 0% cover, that tier disappears completely.
+The rank permutes activation across the grid instead of filling left to right.
+Centers have fixed vertical offsets and shapes have fixed width variation;
+there is no random regeneration during refresh. Full patches stay at their
+tier's normal opacity. Only the boundary patch is partly grown/translucent.
+Increasing cover reveals and grows additional patches at stable locations.
 
-Opacity is a visual proxy for amount: 80% cloud cover does not mean exactly 80%
-of the header's pixels are covered. The drawings keep the same footprint.
-Likewise, the three percentages must not be added together: cloud layers may
-overlap vertically. Total cover is a separate input used for sky palette and
-star visibility, not to manufacture missing altitude layers.
+- 20% cover: 4 full patches and one patch at 0.8 growth.
+- 60% cover: 14 full patches and one patch at 0.4 growth.
+- 95% cover: 22 full patches and one patch at 0.8 growth.
+- 100% cover: all 24 patches, with overlapping low/mid shapes producing a ceiling.
+- Zero or missing cover: no visible patches in that tier.
 
-High clouds use the softest blur and slowest drift. Low clouds have more defined
-edges and faster drift. The speed and direction are decorative CSS choices,
-not measured wind at those heights. Colours change with the solar palette;
-cloud shape and species do not change in response to weather codes. Fog uses
-its condition label and available low-cloud cover; there is no separate fog
-simulation.
+Growth, patch opacity and whole-tier appearance changes transition over five
+seconds. Reduced motion disables those transitions as well as the drift
+animations. High wisps remain softer and move more slowly; low shapes are more
+defined and overlap as they fill. Movement is decorative, not measured wind.
+Fog uses its condition label and available low-cloud cover; there is no separate
+fog simulation.
 
 ### Interpretation and limits of the percentages
 
-We correctly preserve each model percentage as an independent input, clamp it
-to 0–100, and scale that tier's visibility proportionally. The maximum opacity
-values are artistic tuning, not meteorological conversions. For low=20,
-mid=50 and high=80, the resulting opacities are 0.19, 0.425 and 0.60. SVG
-attributes are rounded to two decimals when applied to the drawing.
+This is coverage-driven illustrative artwork, not a pixel-calibrated sky map.
+The percentage specifies how much of a fixed patch budget is active. Overlap,
+overscan beyond the banner, blur, shape size, aspect ratio and lower layers
+covering higher layers all affect the final visible fraction. In particular,
+80% cover does not guarantee exactly 80% of banner pixels are cloudy.
 
-This is an amount-responsive illustration rather than a quantitative coverage
-map. A large percentage makes an existing shape more opaque; it does not spread
-cloud over a corresponding fraction of the banner. Lower drawings are painted
-over higher drawings, so overlap also affects the final visible result. Do not
-describe the output as exact cloud fraction or observed cloud structure.
-
-An area-based representation would require a separate design: change cloud
-footprints or distribution according to cover, then validate overlap between
-tiers. That is not implemented or required for this handoff. Preserve the
-current opacity behavior unless a later task explicitly changes that design.
+Keep the three percentages independent; they overlap vertically and must not be
+summed or normalized. Do not infer actual species, cloud thickness, wind or
+positions from the tier percentages. High-only overcast must not add low clouds.
+The previous opacity-only formula (`cover / 100 × tier maximum`) is superseded.
 
 ### Blur clipping correction
 
@@ -156,7 +152,12 @@ One explicit WMO mapping supplies the text, icon and precipitation effect:
 
 Rain and snow are mutually exclusive decorative layers. Both are CSS patterns;
 no particle engine is involved. Snow is slower and round rather than diagonal.
-Intensity, accumulation, individual hailstones and lightning are not simulated.
+Light, moderate and heavy codes vary streak spacing/opacity or snow-dot density.
+Light: 51, 56, 61, 66, 71, 77, 80, 85. Heavy: 55, 57, 65, 67, 75, 82, 86,
+96, 97, 99. Other recognized precipitation codes use moderate presentation.
+Drizzle remains subtler than ordinary rain. These are code-based visual classes,
+not measured mm/h or snowfall rates. Accumulation, individual hailstones and
+lightning are not simulated.
 Radar echoes do not control these effects. Precipitation also selects a subdued
 palette during broad daylight; other solar phases keep their own palettes.
 
@@ -199,7 +200,7 @@ Paths below are relative to the source `ipma-radar` repository.
 
 | Source | What to carry over or adapt |
 | --- | --- |
-| `src/js/skyTheme.js` | Weather validation/cache, WMO mapping, solar/phase calculations, palette and opacity formulas, rendering and refresh lifecycle |
+| `src/js/skyTheme.js` | Weather validation/cache, WMO mapping, solar/phase calculations, palette and patch-growth formulas, rendering and refresh lifecycle |
 | `index.html` | `#skyBackground`, cloud SVGs and filter definitions, precipitation layers, moon/stars, `#skyHeading` and weather badge |
 | `src/css/radar.css` | Sky, cloud, rain/snow, stars/moon, heading/badge, reduced-motion, hidden and palette-dependent control styles |
 | `src/js/app.js` | Example startup ordering: initialize theme, then start the existing location flow |
@@ -298,7 +299,7 @@ Acceptance criteria:
 
 - One startup GPS acquisition; correct fallback on denial, absence or timeout.
 - Clear fixture: all three tiers vanish. High-only overcast fixture: no invented
-  low/mid clouds. Mixed percentages produce the documented scaled opacities.
+  low/mid clouds. Mixed percentages produce the documented patch growth at stable positions.
 - Zero, missing and out-of-range cover values are handled without confusing
   missing data with clear weather. Cloud bands are not summed or normalized.
 - Rain, freezing rain, snow and snow showers use their documented labels and
@@ -330,7 +331,7 @@ location, weather and lifecycle code. Implement an isolated component there;
 do not change the source ipma-radar repository. This is a startup-location
 banner: reuse the host's location acquisition, pass explicit fallback
 coordinates, and keep that location fixed during map navigation. Preserve
-independent low/mid/high percentage-to-opacity mapping, transparent control
+independent low/mid/high percentage-to-footprint mapping, transparent control
 rows, expanded SVG blur bounds, rain/snow distinction, freshness and cancellation
 rules, reduced motion and discreet provider/licence credits. Scope all CSS and
 DOM access and provide cleanup on unmount. Do not claim literal cloud-area

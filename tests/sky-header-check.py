@@ -96,7 +96,18 @@ try:
       const high=getSkyPalette(40,{total:100,low:0,mid:0,high:100,weatherCode:3});
       const mid=getSkyPalette(40,{total:60,low:0,mid:60,high:0,weatherCode:2});
       results.independentTiers=high.highOpacity===.75 && high.lowOpacity===0 && high.midOpacity===0 &&
-        mid.midOpacity===.51 && mid.lowOpacity===0 && mid.highOpacity===0;
+        mid.midOpacity===.85 && mid.lowOpacity===0 && mid.highOpacity===0;
+      const low=document.getElementById('skyLowClouds');
+      const amount=()=>Array.from(low.children).reduce((n,e)=>n+Number(e.firstElementChild.style.opacity),0);
+      renderSkyClouds(low,'low',20,.95);const small=amount(),first=low.firstElementChild;
+      renderSkyClouds(low,'low',60,.95);const medium=amount();
+      renderSkyClouds(low,'low',95,.95);const large=amount();
+      results.coverageGrowth=Math.abs(small-4.8)<.001 && Math.abs(medium-14.4)<.001 && Math.abs(large-22.8)<.001;
+      results.stablePatches=low.children.length===24 && low.firstElementChild===first;
+      renderSkyClouds(low,'low',0,0);results.zeroFootprint=amount()===0;
+      results.intensity=getSkyCondition(61).intensity==='light' && getSkyCondition(63).intensity==='moderate' &&
+        getSkyCondition(65).intensity==='heavy' && getSkyCondition(71).intensity==='light' &&
+        getSkyCondition(75).intensity==='heavy' && getSkyCondition(51).drizzle;
       const oldSolar=getSolarElevation;getSolarElevation=()=>40;
       updateSkyTheme();
       results.dayStarsHidden=getComputedStyle(document.getElementById('skyStarsLayer')).display==='none';
@@ -153,6 +164,7 @@ try:
     print('SKY_WEATHER',result,flush=True)
     assert all(result.values()),result
     c.call('Emulation.setEmulatedMedia',{'features':[{'name':'prefers-reduced-motion','value':'reduce'}]})
+    assert c.evaluate("getComputedStyle(document.querySelector('.sky-cloud-patch')).transitionDuration==='0s'")
     assert c.evaluate("['.cloud-layer','.sky-rain-layer','.sky-snow-layer','.star'].every(s=>getComputedStyle(document.querySelector(s)).animationName==='none')")
     assert c.evaluate('document.documentElement.scrollWidth<=innerWidth && testErrors.length===0')
     c.call('Page.navigate',{'url':f'http://127.0.0.1:{server.server_port}/index.html?deny'})

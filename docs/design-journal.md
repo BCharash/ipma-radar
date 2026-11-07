@@ -1564,3 +1564,34 @@ proposed lifecycle/cleanup contract, ordered implementation steps, acceptance
 criteria and a copy-paste implementation prompt. Proposed encapsulation is
 clearly distinguished from the current global-script implementation. No
 PraiasPortugal code, component extraction or deployment was performed.
+
+
+## 7 November 2026 — Coverage-driven cloud patches and precipitation intensity
+
+Replaced the opacity-only cloud illustration with 24 stable SVG patches per tier.
+Each tier's percentage activates and grows its own distributed patch budget;
+full patches retain separate high/mid/low artistic opacities of 0.75/0.85/0.95.
+The previous `cover / 100 × opacity maximum` formula in earlier entries is
+historical. Zero/missing cover still creates no visible clouds, and total cover
+does not manufacture missing altitude tiers.
+
+Fixed patch ranks, vertical offsets and width variations avoid reshuffling on
+refresh. High uses wisps, mid uses broad ellipses and low uses rounded puffs with
+broad bases. Low/mid patches increasingly overlap toward a ceiling. Cloud SVGs
+stretch to the banner's proportions with overscan and header-relative heights;
+the expanded vertical blur bounds remain. Patch growth/opacity and tier opacity
+transition over five seconds; reduced motion disables both transitions and drift.
+Percentages control the active patch budget, not an exact fraction of pixels.
+
+Added light/moderate/heavy precipitation presentation from explicit weather-code
+classes: rain spacing and opacity, and snow density and opacity. Drizzle remains
+subtle. Rain/snow remain mutually exclusive, independent of radar, and decorative;
+no measured-rate or accumulation simulation was added.
+
+Focused Chrome checks passed patch-budget growth at 20/60/95%, stable node reuse,
+zero footprint, independent tiers, intensity classification and the existing
+startup, freshness, cache, cancellation, visibility and reduced-motion checks.
+Isolated desktop previews were inspected for sparse low cloud, near-overcast low
+cloud and high-only cover. The architecture handoff now specifies patch generation
+and limits instead of the superseded opacity-only behavior. Physical iPhone/Safari
+appearance and performance remain a device acceptance check.
