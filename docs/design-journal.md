@@ -1619,3 +1619,91 @@ returns tier cloud cover and 10-metre wind; pressure-level winds are not request
 The architecture handoff records concrete integration points and a possible
 future wind-profile extension. No PraiasPortugal files were modified. Winds aloft
 and physically meaningful screen projection remain future work.
+
+
+## 7 November 2026 — Distinguish high, mid and low cloud textures
+
+The user found the tiers visually similar. Replaced the common soft-blob look
+with fine feathered high-cloud strands, broken flattened mid-cloud sheets and
+low-cloud scallops with a flatter base. Low uses three stable outlines, height
+variation, faint crest highlights and a soft underside gradient. High varies
+strand tilt; mid varies sheet thickness. These are illustrative altitude-family
+textures, not an inference of cloud species from model cover percentages.
+
+Reduced shared SVG blur deviations to High 1.8, Mid 3.5 and Low 1.5 to preserve
+the texture differences. Retained expanded filter bounds, patch coverage/growth,
+independent phases/drift and reduced motion. Focused Chrome checks passed for
+existing sky behavior; isolated tier previews were visually inspected at equal
+cover and near-overcast low cover. Updated the architecture handoff to include
+the artwork and shared low-cloud shading gradient. Physical iPhone acceptance
+remains open.
+
+
+## 7 November 2026 — Soften the rejected symbolic cloud textures
+
+The user rejected the sharp strand/scallop version as bizarre and unrealistic:
+wisps read as lines across other clouds, mid cloud appeared too dark, and the
+forms felt symbolic rather than atmospheric. Replaced high strokes with faint
+filled tapered veils, simplified mid into pale uneven sheets, and removed low
+crest highlights and mid internal dark lines. Blur is now High 8, Mid 7, Low 5;
+the earlier 1.8/3.5/1.5 texture settings are superseded. Low underside shadow is
+reduced to 0.12. All tiers share the selected palette's illumination colour,
+rather than assigning darkness by altitude.
+
+Retained independent cover, stable arrangements, growth transitions, separate
+phase/drift, precipitation and reduced motion. Inspected individual tier and
+near-overcast still previews; the current artwork remains an illustration, not
+a cloud-species observation. The architecture document records the replacement
+and its interpretation. The review targets the combined composition as well as
+isolated layers, avoiding acceptance based solely on distinguishable symbols.
+
+
+## 7 November 2026 — Accepted interim sky checkpoint and next steps
+
+The user accepted the softer composition for now but explicitly stated that it
+is still not ideal. Preserve this version as the interim baseline. This does
+not establish visual realism, complete device acceptance or begin the
+PraiasPortugal port. No additional visual implementation was requested at this
+checkpoint.
+
+Current treatment: faint high veils, pale mid sheets, uneven low masses with
+gentle underside shading; shared illumination; blur High 8/Mid 7/Low 5;
+independent coverage, patch arrangements, growth and drift phases. The earlier
+sharp fibers, dark mid-cloud treatment and conspicuous low highlights were
+rejected. Weather, rain/snow intensity, freshness, cancellation, reduced motion,
+transparent control rows, attribution and the clipping correction remain.
+
+Remaining concerns include procedural repetition, artificial overlap, tiers
+merging and the gap between patch-budget cover and literal cloudy area. Altitude
+percentages do not identify cloud species or reconstruct the physical sky. The
+user knows of no good example; no external exemplar was researched or validated
+at this checkpoint.
+
+Next visual work should use a separate reversible comparison lab, fixed weather
+and viewport fixtures, still compositions before motion, a small number of
+alternatives and visual acceptance before replacing the baseline. Prioritize
+the combined sky, natural edges and restrained lighting/motion over recognizable
+symbols. Winds aloft remain optional and lower priority. Porting is a separate
+future task.
+
+The [architecture handoff](sky-header-architecture.md#current-checkpoint--accepted-interim-appearance)
+now leads with the accepted status, limitations and ordered next steps. Its
+implementation prompt is explicitly for a later authorized port. README links
+to that checkpoint. This update changes documentation only: previous Chrome and
+visual-preview evidence is retained without claiming a new test run. Physical
+iPhone/Safari performance and full accessibility acceptance remain pending.
+
+## 7 November 2026 — Immediate first cloud appearance
+
+The user requested that clouds appear promptly on opening rather than grow into
+view. Cloud transitions are disabled until the first usable weather snapshot's
+target styles are committed; the header then sets `data-sky-clouds-ready` to
+enable five-second transitions for subsequent updates. Initial cached and
+network weather follow the same rendering path. Retrieval can still take time;
+no speculative cloud state is shown before usable weather arrives. Independent
+drift and reduced-motion behavior are retained. This is a startup presentation
+adjustment to the accepted interim artwork, not a new visual design.
+
+The focused browser check now starts with cloudy weather and checks the first
+state's actual opacity and absence of running cloud transitions, plus the
+five-second transition configuration for later updates.

@@ -11,11 +11,76 @@ observation, or a reconstruction of the sky overhead. Radar and satellite
 playback keep their own observation times; the header always represents current
 conditions at the startup location.
 
+## Current checkpoint — accepted interim appearance
+
+On 7 November 2026 the user accepted the softer cloud version **for now**, while
+explicitly noting that the result is still not ideal. This is the baseline to
+preserve, not a completed realism design or authorization for another redesign.
+PraiasPortugal integration remains deferred.
+
+What is in place:
+
+- Independent model percentages controlling stable patch count/growth.
+- Faint high veils, soft pale mid sheets, and uneven low masses with gentle
+  underside shading. Blur is High 8, Mid 7, Low 5; lighting colour is shared.
+- Independent placement, activation patterns and drift phases, with five-second
+  weather transitions and reduced-motion support.
+- Startup-location weather, freshness/cancellation handling, rain/snow intensity,
+  transparent control rows, and discreet map attribution.
+- Expanded SVG filter bounds correcting the previously observed horizontal edge.
+
+What remains unsatisfactory or approximate:
+
+- The composition still reads as procedural artwork rather than a convincing
+  natural sky. Increasing symbolic detail made the rejected version worse.
+- Patch repetition and overlap can look artificial or make tiers merge. Good
+  individual-layer previews do not establish a convincing combined composition.
+- Percentages specify an active patch budget, not calibrated cloudy pixel area.
+- Cloud species, actual wind motion, viewing direction and volumetric lighting
+  are not inferred. Moon placement remains decorative.
+- Chrome behavior and still previews have been checked; physical iPhone/Safari
+  appearance, sustained performance and full accessibility acceptance remain
+  open. Technical checks do not establish visual realism.
+
+No external reference implementation has been selected or validated for this
+feature. The user's lack of a known good example is not evidence that none exists.
+
+### Next steps when visual work resumes
+
+1. Preserve this baseline and use a separate, reversible visual lab. Avoid more
+   successive production restyles without a comparison and visual acceptance.
+2. Establish fixed fixtures: clear, sparse low, broken mid, high veil, mixed
+   layers, near-overcast, rain, snow, dusk and night. Include 0/20/60/95% tier
+   values, missing data, desktop and narrow mobile layouts. Keep weather,
+   lighting and capture size identical between candidates.
+3. Review references if useful and record what transfers to a shallow animated
+   banner. Compare the current SVG approach with at most one or two alternative
+   treatments. A different rendering engine or asset approach is an option to
+   evaluate, not an agreed migration.
+4. Compare still compositions first, then short motion previews. Prioritize the
+   combined sky: natural edges, restrained contrast, plausible overlap, limited
+   repetition, smooth movement, readable controls and no clipping boundaries.
+   Change one visual dimension at a time and retain the previous comparison.
+5. Obtain visual acceptance before replacing the baseline. Preserve weather
+   semantics, independent cover, freshness, credits and reduced motion; rerun
+   relevant checks and verify on a physical iPhone before calling it ready.
+
+Actual winds aloft are optional and lower priority than composition. The service
+investigation and pressure-level proposal below remain available for later work.
+Porting is a separate future task that should preserve this interim appearance
+or use a separately approved visual candidate.
+
 ## Startup location and lifecycle
 
 `initSkyTheme()` renders sun-based colours immediately. The existing map
 geolocation request resolves the header location once through
 `resolveSkyStartupLocation()`. The sky does not make a second GPS request.
+
+The first usable weather snapshot appears without cloud growth/fade-in. Cloud
+transitions are disabled until those first target styles have been committed;
+`data-sky-clouds-ready` then enables transitions for later weather changes.
+Weather retrieval still takes time; this removes the additional five-second
+opening animation, not the network wait. Independent drift continues normally.
 
 - GPS success: use the coordinates obtained at startup.
 - GPS denied, unavailable or timed out: use `DEFAULT_LOCATION` from
@@ -66,9 +131,9 @@ cloud drawing progressively more transparent.
 
 | Tier | API input | Model band | Patch artwork | Blur | Layer opacity when present | Drift |
 | --- | --- | --- | --- | --- | --- | --- |
-| High | `cloud_cover_high` → `high` | 8 km and above | Long curved wisps | 16 | 0.75 | 320 s |
-| Mid | `cloud_cover_mid` → `mid` | 3–8 km | Broad overlapping ellipses | 12 | 0.85 | 240 s |
-| Low | `cloud_cover_low` → `low` | Up to 3 km, including fog | Rounded puffs and broad bases | 6 | 0.95 | 160 s |
+| High | `cloud_cover_high` → `high` | 8 km and above | Faint tapered veils | 8 | 0.75 | 320 s |
+| Mid | `cloud_cover_mid` → `mid` | 3–8 km | Soft irregular pale sheets | 7 | 0.85 | 240 s |
+| Low | `cloud_cover_low` → `low` | Up to 3 km, including fog | Soft uneven masses, gentle undersides | 5 | 0.95 | 160 s |
 
 These altitude bands follow [Open-Meteo's variable definitions](https://open-meteo.com/en/docs).
 `cloud_cover` → `total` separately selects palette/night visibility; it does not
@@ -99,10 +164,24 @@ Increasing cover reveals and grows additional patches at stable locations.
 - 100% cover: all 24 patches, with overlapping low/mid shapes producing a ceiling.
 - Zero or missing cover: no visible patches in that tier.
 
-Growth, patch opacity and whole-tier appearance changes transition over five
-seconds. Reduced motion disables those transitions as well as the drift
-animations. High wisps remain softer and move more slowly; low shapes are more
-defined and overlap as they fill. Movement is decorative, not measured wind.
+After the initial weather appearance, growth, patch opacity and whole-tier
+changes transition over five seconds. Reduced motion disables those transitions as well as the drift
+animations. High patches use broad, tapered, low-opacity filled shapes with soft edges,
+rather than visible stroked strands. Mid patches use pale flattened sheets with
+uneven edges and no dark internal lines. Low uses softly blurred uneven outlines
+and a gentle underside gradient (maximum shadow opacity 0.12), without crest
+highlights. Stable tilt/thickness/height variations reduce repetition.
+
+All tiers share the palette's cloud illumination colour. Altitude does not
+select darker cloud paint. Differences come from texture, scale, softness and
+layer opacity, with only the low layer receiving a subtle underside shade.
+High is drawn behind mid and low; this is layered illustration, not volumetric
+occlusion or a reconstruction of actual cloud species.
+
+The user rejected the earlier sharp fibers, dark mid sheets and outlined-looking
+low highlights as overly stylized. Those details and the 1.8/3.5/1.5 blur settings
+are superseded by this softer composition. Coverage/growth and independent drift
+remain. Movement is decorative, not measured wind.
 Drift uses linear timing with different starting phases (negative delays of
 High −117 s, Mid −83 s, Low −41 s). Each traversal lasts 320/240/160 seconds.
 High and mid initially move right at different rates; low initially moves left.
@@ -377,6 +456,10 @@ Acceptance criteria:
   and attribution checks still pass.
 
 ### Copy-paste implementation prompt
+
+Use this only when explicitly asked to implement the PraiasPortugal port. It is
+not the next automatic action at this checkpoint. Preserve the accepted interim
+appearance unless the task also approves a replacement visual design.
 
 ```text
 Implement the sky header in the PraiasPortugal repository using the current

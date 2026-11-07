@@ -72,14 +72,19 @@
 
   <svg width="0" height="0" class="sky-filter-defs">
     <defs>
+      <linearGradient id="cloudLowVolume" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#172b4d" stop-opacity="0" />
+        <stop offset="45%" stop-color="#172b4d" stop-opacity="0" />
+        <stop offset="100%" stop-color="#172b4d" stop-opacity=".12" />
+      </linearGradient>
       <filter id="cloudBlurCirrus" x="-20%" y="-100%" width="140%" height="300%">
-        <feGaussianBlur stdDeviation="16" />
+        <feGaussianBlur stdDeviation="8" />
       </filter>
       <filter id="cloudBlurHeavy" x="-20%" y="-100%" width="140%" height="300%">
-        <feGaussianBlur stdDeviation="12" />
+        <feGaussianBlur stdDeviation="7" />
       </filter>
       <filter id="cloudBlurMedium" x="-20%" y="-100%" width="140%" height="300%">
-        <feGaussianBlur stdDeviation="6" />
+        <feGaussianBlur stdDeviation="5" />
       </filter>
     </defs>
   </svg>

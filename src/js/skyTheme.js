@@ -227,8 +227,6 @@ function getSkyPalette(elevation, weather) {
 
   let gradient = "";
   let cloudHighFill = "#ffffff";
-  let cloudMidFill = "#ffffff";
-  let cloudLowFill = "#ffffff";
   let isDark = false;
 
   if (elevation > 12) {
@@ -236,22 +234,16 @@ function getSkyPalette(elevation, weather) {
     if (isRaining) {
       gradient = "linear-gradient(180deg, #374151 0%, #4b5563 50%, #6b7280 100%)";
       cloudHighFill = "#cbd5e1";
-      cloudMidFill = "#94a3b8";
-      cloudLowFill = "#64748b";
       isDark = true;
     } else if (overcastFactor > 0.4) {
       // Overcast silver/slate sky
       gradient = "linear-gradient(180deg, #5c6b7a 0%, #8292a1 50%, #a4b3c2 100%)";
       cloudHighFill = "#e2e8f0";
-      cloudMidFill = "#cbd5e1";
-      cloudLowFill = "#94a3b8";
       isDark = false;
     } else {
       // Clear azure / sky blue
       gradient = "linear-gradient(180deg, #1d6fe9 0%, #4facfe 50%, #8ec5fc 100%)";
       cloudHighFill = "#ffffff";
-      cloudMidFill = "#ffffff";
-      cloudLowFill = "#ffffff";
       isDark = false;
     }
   } else if (elevation > 3) {
@@ -259,14 +251,10 @@ function getSkyPalette(elevation, weather) {
     if (overcastFactor > 0.5) {
       gradient = "linear-gradient(180deg, #334155 0%, #64748b 50%, #94a3b8 100%)";
       cloudHighFill = "#cbd5e1";
-      cloudMidFill = "#94a3b8";
-      cloudLowFill = "#64748b";
       isDark = false;
     } else {
       gradient = "linear-gradient(180deg, #25559c 0%, #d97706 65%, #fbbf24 100%)";
       cloudHighFill = "#fed7aa";
-      cloudMidFill = "#fde68a";
-      cloudLowFill = "#fef3c7";
       isDark = false;
     }
   } else if (elevation > -4) {
@@ -274,22 +262,16 @@ function getSkyPalette(elevation, weather) {
     if (overcastFactor > 0.6) {
       gradient = "linear-gradient(180deg, #1e293b 0%, #475569 50%, #64748b 100%)";
       cloudHighFill = "#94a3b8";
-      cloudMidFill = "#64748b";
-      cloudLowFill = "#475569";
       isDark = true;
     } else {
       gradient = "linear-gradient(180deg, #1e293b 0%, #9a3412 40%, #ea580c 70%, #f97316 100%)";
       cloudHighFill = "#fed7aa";
-      cloudMidFill = "#fdba74";
-      cloudLowFill = "#fed7aa";
       isDark = true;
     }
   } else if (elevation > -12) {
     // Nautical Twilight / Dusk
     gradient = "linear-gradient(180deg, #090d1a 0%, #1e1b4b 50%, #312e81 100%)";
     cloudHighFill = "#4338ca";
-    cloudMidFill = "#475569";
-    cloudLowFill = "#334155";
     isDark = true;
   } else {
     // Full Night
@@ -299,10 +281,12 @@ function getSkyPalette(elevation, weather) {
       gradient = "linear-gradient(180deg, #030712 0%, #0b1329 55%, #111d3d 100%)";
     }
     cloudHighFill = "#1e293b";
-    cloudMidFill = "#1e293b";
-    cloudLowFill = "#334155";
     isDark = true;
   }
+
+  // Shared illumination: altitude does not determine cloud darkness.
+  const cloudMidFill=cloudHighFill;
+  const cloudLowFill=cloudHighFill;
 
   // Coverage controls patch count/size; tier opacity remains independently tuned.
   const opacity=(cover,maximum)=>Number.isFinite(cover) && cover>0 ? maximum : 0;
@@ -343,11 +327,29 @@ function renderSkyClouds(group,tier,cover,opacity){
       patch.style.transform="scale(0)";
       const width=0.9+((i*11+layout.seed)%19)/50;
       if(tier==="high"){
-        patch.innerHTML=`<path d="M -95 0 Q -30 -14 25 -2 T 100 -6 M -65 15 Q 0 5 85 12" stroke="var(--cloud-high-fill)" stroke-width="9" stroke-linecap="round" transform="scale(${width} 1)"/>`;
+        const tilt=-3+(i*5%7);
+        patch.innerHTML=`<g fill="var(--cloud-high-fill)" transform="scale(${width} 1) rotate(${tilt})">
+          <path d="M -120 12 Q -50 -17 30 -14 Q 80 -13 118 -23 Q 68 -1 4 4 Q -66 6 -120 12 Z" opacity=".5"/>
+          <path d="M -92 25 Q -26 2 48 4 Q 91 6 125 -2 Q 71 20 5 17 Q -53 18 -92 25 Z" opacity=".24"/>
+        </g>`;
       }else if(tier==="mid"){
-        patch.innerHTML=`<ellipse rx="100" ry="39" fill="var(--cloud-mid-fill)" transform="scale(${width} 1)"/>`;
+        const thickness=.8+(i*5%7)/10;
+        patch.innerHTML=`<g fill="var(--cloud-mid-fill)" transform="scale(${width} ${thickness})">
+          <path d="M -116 2 Q -89 -22 -48 -16 Q -12 -28 26 -15 Q 70 -22 116 -1 Q 84 13 42 10 Q 0 22 -38 12 Q -84 20 -116 2 Z"/>
+          <path d="M -82 17 Q -35 7 9 16 Q 43 11 83 21 Q 41 31 2 26 Q -45 31 -82 17 Z" opacity=".35"/>
+        </g>`;
       }else{
-        patch.innerHTML=`<g fill="var(--cloud-low-fill)" transform="scale(${width} 1)"><ellipse cy="15" rx="100" ry="30"/><circle cx="-52" r="30"/><circle cx="-10" cy="-10" r="38"/><circle cx="40" cy="-4" r="33"/></g>`;
+        const height=.75+(i*3%7)/15;
+        const tops=[
+          "M -104 15 Q -110 -13 -79 -16 Q -74 -45 -41 -36 Q -23 -69 10 -43 Q 42 -52 55 -23 Q 89 -29 96 -1 Q 115 2 110 24",
+          "M -104 15 Q -112 -7 -88 -13 Q -89 -37 -59 -33 Q -44 -63 -15 -43 Q 16 -58 35 -28 Q 66 -38 77 -13 Q 106 -17 110 24",
+          "M -104 15 Q -106 -19 -73 -17 Q -57 -51 -29 -31 Q -6 -65 22 -39 Q 52 -41 60 -16 Q 91 -24 97 3 Q 113 7 110 24"
+        ];
+        const outline=`${tops[i%3]} Q 53 32 0 28 Q -63 33 -104 24 Z`;
+        patch.innerHTML=`<g transform="scale(${width} ${height})">
+          <path d="${outline}" fill="var(--cloud-low-fill)"/>
+          <path d="${outline}" fill="url(#cloudLowVolume)"/>
+        </g>`;
       }
       outer.appendChild(patch);group.appendChild(outer);
     }
@@ -390,6 +392,12 @@ function updateSkyTheme() {
   renderSkyClouds(highGroup,"high",weather?.high,palette.highOpacity);
   renderSkyClouds(midGroup,"mid",weather?.mid,palette.midOpacity);
   renderSkyClouds(lowGroup,"low",weather?.low,palette.lowOpacity);
+
+  if(weather && !header.hasAttribute("data-sky-clouds-ready")){
+    // Flush the initial target styles before enabling transitions for later updates.
+    void header.offsetWidth;
+    header.setAttribute("data-sky-clouds-ready","");
+  }
 
   const condition=getSkyCondition(weather?.weatherCode);
   const rainLayer=document.getElementById("skyRainLayer");

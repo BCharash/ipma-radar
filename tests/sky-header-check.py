@@ -72,7 +72,7 @@ try:
         if(String(url).startsWith('https://api.open-meteo.com/')){
           skyTestWeatherCalls++;
           return Promise.resolve({ok:true,json:async()=>({current:{time:Math.floor(Date.now()/1000),
-            temperature_2m:18,cloud_cover:0,cloud_cover_low:0,cloud_cover_mid:0,cloud_cover_high:0,weather_code:0}})});
+            temperature_2m:18,cloud_cover:60,cloud_cover_low:60,cloud_cover_mid:20,cloud_cover_high:10,weather_code:2}})});
         }
         return realFetch(url,options);
       };
@@ -91,6 +91,12 @@ try:
         startupLocation:currentSkyCoords.lat===38.72 && currentSkyCoords.lon===-9.14};
       const initial=JSON.stringify(currentSkyCoords);resolveSkyStartupLocation(40,-8,true);
       results.fixedLocation=JSON.stringify(currentSkyCoords)===initial;
+      const startupPatch=Array.from(document.querySelectorAll('#skyLowClouds .sky-cloud-patch')).find(e=>e.style.opacity==='1');
+      results.instantStartup=!!startupPatch && getComputedStyle(startupPatch).opacity==='1' &&
+        getComputedStyle(document.getElementById('skyLowClouds')).opacity==='0.95' &&
+        document.querySelectorAll('.cloud-layer').length===3 &&
+        !Array.from(document.querySelectorAll('.sky-cloud-patch, .cloud-layer > g')).some(e=>e.getAnimations().some(a=>a instanceof CSSTransition));
+      results.laterTransitions=getComputedStyle(startupPatch).transitionDuration.split(',').every(s=>s.trim()==='5s');
       const clear=getSkyPalette(40,{total:0,low:0,mid:0,high:0,weatherCode:0});
       results.clearHasNoClouds=clear.lowOpacity===0 && clear.midOpacity===0 && clear.highOpacity===0;
       const high=getSkyPalette(40,{total:100,low:0,mid:0,high:100,weatherCode:3});

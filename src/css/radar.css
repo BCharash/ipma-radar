@@ -53,6 +53,10 @@ html,body{
 
 .cloud-layer > g{transition:opacity 5s ease}
 
+/* Commit the first weather state without growing clouds in from an empty sky. */
+#header:not([data-sky-clouds-ready]) .sky-cloud-patch,
+#header:not([data-sky-clouds-ready]) .cloud-layer > g{transition:none}
+
 /* Subtle, ground-observed multi-altitude cloud drift: High (320s), Mid (240s), Low (160s) */
 .cloud-layer-high{
   top:-25px;

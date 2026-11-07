@@ -12,6 +12,8 @@ and refreshes weather every 15 minutes. The badge shows condition time and flags
 stale data. High, mid and low cloud drawings follow their own cloud-cover values;
 rain and snow use separate effects. See the [sky header architecture](docs/sky-header-architecture.md)
 for the cloud-layer explanation and weather fallback behavior.
+The softer cloud appearance is accepted as an interim baseline; visual realism
+remains open. The architecture document records the checkpoint and next steps.
 
 ## Satellite and radar
 
