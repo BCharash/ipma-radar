@@ -8,9 +8,9 @@ separate geolocation diagnostic page; opening it runs only the location test.
 
 ## Satellite and radar
 
-Choose **Map**, **Visible (daylight)**, **Infrared satellite**, or **GeoColour
-satellite** in the View selector. Toggle **Rain radar** independently. GeoColour
-with radar is the default, and both sources start loading together. Separate **Satellite** and **Radar** opacity sliders
+Choose **Map**, **GeoColour satellite**, **Visible (daylight)**, or **Infrared
+satellite** in the View selector. Toggle **Rain radar** independently. Map
+with radar enabled is the default. Separate **Satellite** and **Radar** opacity sliders
 let the street map show through; satellite starts at 60% opacity.
 
 Satellite imagery comes from EUMETSAT's public EUMETView WMS and requires no API
