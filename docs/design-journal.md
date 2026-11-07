@@ -1431,3 +1431,136 @@ existing mixed-quality, retry, cache, coverage and playback checks.
 - Coordinate refresh and navigation with the host application lifecycle.
 
 These are future steps, not changes completed by the file reorganization.
+
+## 7 November 2026 — Map startup, GeoColour preloading and High status placement
+
+The satellite comparison retained all three products: GeoColour for general
+viewing, Visible for daylight cloud detail, and Infrared for temperature-based
+cloud structure during day or night. The user then chose **Map with Rain radar
+checked** as the startup display. View order is now **Map → GeoColour → Visible
+→ Infrared**. This supersedes earlier entries describing GeoColour as the
+selected startup view.
+
+GeoColour history preloads into the existing source-image cache while Map is
+selected: finish the Low pass before starting High, using four workers and the
+current viewport/history range. This background path creates no satellite
+overlays or GeoColour vector map and does not change the visible Map/radar
+selection. Selecting a satellite view cancels background warming; normal
+satellite loading reuses cached images when bounds, size and timestamps match.
+New observations or changed coverage can still require requests. Map movement
+or history changes prepare the corresponding scene; this is not a guarantee of
+instant switching or a continuously refreshed background feed.
+
+Moved High processing/ready counts and final Low-fallback totals out of the
+bottom satellite frame counter into `#satelliteHighStatus`, above the opacity
+sliders. The bottom readout retains frame number, actual displayed quality and
+decoded dimensions, and observation time. Retry High and pass-boundary quality
+switching retain their existing behavior. Earlier entries describing High
+processing totals inside the frame readout are historical.
+
+Validation during implementation: Chrome checks passed Map/radar defaults,
+Low-before-High background order, cancellation and cache reuse, High progress
+placement and retry behavior, together with radar/GeoColour playback, coverage,
+registration and failure recovery.
+
+## 7 November 2026 — Dynamic sky header and review of the initial implementation
+
+An Antigravity/Gemini implementation added the atmospheric header in
+`skyTheme.js`, SVG artwork and CSS, documented in `sky-header-architecture.md`.
+It included sun-dependent palettes, cloud tiers, an Open-Meteo temperature and
+condition badge, rain, and decorative moon/stars. The visible title became
+**Sky Flow**. The user approved the concept and requested corrections in this
+standalone application; porting to PraiasPortugal remains deferred.
+
+Review reproduced an older weather request replacing newer-location conditions
+while the tooltip named the newer coordinates. It also confirmed that the SVG
+stars rendered despite `hidden`, that the badge's display styling overrode its
+hidden state, and that snow received a rain effect. Additional findings included
+duplicate startup GPS requests, indefinitely retained weather after refresh
+failure, and documentation overstating observation accuracy, astronomy,
+accessibility and rendering cost.
+
+### Startup location and weather-state corrections
+
+- Reuse the map's single startup geolocation request. Resolve the banner once
+  on GPS success, or use the map's `DEFAULT_LOCATION` on denial, absence or
+  timeout. Do not reuse historical saved GPS coordinates as the current location.
+- Keep the banner location fixed for the page session. Map pan/zoom and later
+  Current location presses do not retarget it. Refresh weather every 15 minutes
+  for that location; solar colours update every minute.
+- Abort superseded requests and also reject late responses using generation and
+  coordinate checks. Requests time out after 10 seconds.
+- Preserve provider condition time and fetch time. Show condition time in the
+  badge; mark data stale from 15 minutes and stop weather effects at 60 minutes.
+  Expired/unavailable data retains solar colours with an unavailable message.
+- Validate coordinates/timestamps, retain missing fields as missing, and use one
+  explicit WMO mapping for condition text, icons and precipitation effects.
+- Add an explicit header `[hidden]` rule, including SVG elements. Keep the moon
+  explicitly illustrative: approximate phase, fixed position, no local rise/set
+  or altitude calculation. Describe weather as model-based current conditions,
+  not direct local station observations.
+
+### Independent cloud percentages and rain/snow
+
+Each cloud drawing receives its own model input. High uses `cloud_cover_high`,
+Mid uses `cloud_cover_mid`, and Low uses `cloud_cover_low`. Their opacities are
+the clamped percentage divided by 100, multiplied by 0.75, 0.85 and 0.95
+respectively. Zero or missing cover draws none of that tier. Removed the opacity
+floors that kept clear skies cloudy and the total-cover override that invented
+low/mid clouds during high-only overcast conditions.
+
+The source bands follow Open-Meteo: Low up to 3 km, Mid 3–8 km, High from 8 km.
+Artwork remains fixed wisps, broad sheets and rounded puffs, with different blur
+and decorative drift speeds. Percentages control transparency, not the literal
+fraction of banner area occupied by clouds. The tiers overlap and must not be
+summed or normalized. Total cover separately influences the palette and night
+visibility. Species, actual wind, cloud depth and exact positions are not inferred.
+
+Rain uses diagonal streaks; snow and snow showers use slower falling dots.
+Freezing drizzle/rain keep liquid streaks with explicit freezing labels.
+Thunderstorms use rain/storm presentation; hail is labelled without a separate
+hail simulation. Rain and snow effects are mutually exclusive and independent
+of radar echoes. Their animations stop with reduced-motion preferences along with the other
+sky animations. There is no precipitation-intensity or accumulation simulation.
+
+### User-directed presentation refinements and clipping fix
+
+The temporary solid backing bars behind View, opacity and status rows were
+rejected. Those rows are transparent again over the sky, using palette-dependent
+text colours/shadows. The weather badge and heading have a separate mobile row
+so they do not displace or overlap the playback controls.
+
+Moved **Weather: Open-Meteo** from the heading to the map's bottom attribution
+area, beside Leaflet and the map providers, with a CC BY 4.0 link. The weather
+credit is independent of the base-map layer, so switching to GeoColour retains
+it. Source attribution is still required; the banner no longer carries that link.
+
+A horizontal line within the clouds was diagnosed as clipping at the SVG blur
+filter region. Isolated Chrome screenshots compared the original, expanded SVG
+overflow and expanded vertical filter bounds. Enlarging the filter region
+removed the hard edge; overflow alone did not. The production fix changes all
+three filters to `y="-100%"`, `height="300%"`, retaining `x="-20%"` and
+`width="140%"`. The user confirmed the live result looked good after application.
+
+### Evidence and next-use handoff
+
+`tests/sky-header-check.py` passed deterministic Chrome checks for one startup
+GPS request and weather request, default-location fallback, fixed coordinates,
+independent and zero cloud tiers, rain/snow/freezing labels, hidden elements,
+night visibility, stale/expired data, outdated-response rejection, cache reuse,
+offline handling, invalid condition time, reduced motion and mobile overflow.
+The existing quick Chrome suite also passed radar/GeoColour playback, staged
+quality, caches, coverage, registration and map fallback checks. The later
+attribution relocation was checked with the focused suite. Filter clipping has
+isolated-browser visual evidence and user confirmation; it is not an automated
+pixel-regression assertion. Physical iPhone/Safari performance and full
+accessibility acceptance remain open.
+
+Updated [sky header architecture](sky-header-architecture.md) as the authoritative
+behavior specification and future PraiasPortugal handoff. It includes source
+paths, API-to-drawing mapping, rendering limits, startup/freshness rules,
+precipitation mapping, expanded filter bounds, host-component dependencies,
+proposed lifecycle/cleanup contract, ordered implementation steps, acceptance
+criteria and a copy-paste implementation prompt. Proposed encapsulation is
+clearly distinguished from the current global-script implementation. No
+PraiasPortugal code, component extraction or deployment was performed.
