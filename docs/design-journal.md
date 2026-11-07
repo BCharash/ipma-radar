@@ -1595,3 +1595,27 @@ Isolated desktop previews were inspected for sparse low cloud, near-overcast low
 cloud and high-only cover. The architecture handoff now specifies patch generation
 and limits instead of the superseded opacity-only behavior. Physical iPhone/Safari
 appearance and performance remain a device acceptance check.
+
+
+## 7 November 2026 — Independent cloud arrangements and drift phases
+
+The user observed that the cloud layers appeared linked. Although durations were
+separate, the old patch placement/ranking pattern was shared, animations started
+together, and ease-in/out drift made relative movement subtle.
+
+Each tier now has its own fixed placement seed, width variation and activation
+ranking. Linear 320/240/160-second traversals start at distinct negative delays;
+high/mid initially travel right at different rates and low initially travels
+left. Each layer independently reverses at its overscan limit without jumping.
+No wind data was added. Coverage growth, stable node reuse, expanded blur bounds,
+five-second weather transitions and reduced-motion support remain.
+
+Focused Chrome checks passed distinct layouts and sampled transform changes ten
+seconds apart, confirming relative drift in addition to the existing sky checks.
+
+Read-only inspection of PraiasPortugal confirmed its weather service/formatter,
+data-manager and conditions-rendering structure. The weather service already
+returns tier cloud cover and 10-metre wind; pressure-level winds are not requested.
+The architecture handoff records concrete integration points and a possible
+future wind-profile extension. No PraiasPortugal files were modified. Winds aloft
+and physically meaningful screen projection remain future work.

@@ -328,18 +328,20 @@ function renderSkyClouds(group,tier,cover,opacity){
   if(!group) return;
   const count=24;
   const widths={high:1400,mid:1200,low:1300};
+  const layouts={high:{seed:5,step:7,offset:3},mid:{seed:13,step:11,offset:13},low:{seed:23,step:5,offset:7}};
+  const layout=layouts[tier];
   if(!group.children.length){
     const ns="http://www.w3.org/2000/svg";
     for(let i=0;i<count;i++){
       const outer=document.createElementNS(ns,"g");
-      const x=(i%8+0.5)*widths[tier]/8;
-      const y=30+Math.floor(i/8)*80+((i*13)%17-8);
+      const x=(i%8+0.5)*widths[tier]/8+((i*17+layout.seed*11)%23-11)*2;
+      const y=30+Math.floor(i/8)*80+((i*13+layout.seed*7)%29-14);
       outer.setAttribute("transform",`translate(${x} ${y})`);
       const patch=document.createElementNS(ns,"g");
       patch.classList.add("sky-cloud-patch");
       patch.style.opacity="0";
       patch.style.transform="scale(0)";
-      const width=0.9+(i*11%19)/50;
+      const width=0.9+((i*11+layout.seed)%19)/50;
       if(tier==="high"){
         patch.innerHTML=`<path d="M -95 0 Q -30 -14 25 -2 T 100 -6 M -65 15 Q 0 5 85 12" stroke="var(--cloud-high-fill)" stroke-width="9" stroke-linecap="round" transform="scale(${width} 1)"/>`;
       }else if(tier==="mid"){
@@ -353,7 +355,7 @@ function renderSkyClouds(group,tier,cover,opacity){
   const amount=Number.isFinite(cover) ? Math.max(0,Math.min(100,cover))/100 : 0;
   group.setAttribute("opacity",opacity.toFixed(2));
   Array.from(group.children).forEach((outer,i)=>{
-    const rank=(i*7)%count;
+    const rank=(i*layout.step+layout.offset)%count;
     const growth=Math.max(0,Math.min(1,amount*count-rank));
     const patch=outer.firstElementChild;
     patch.style.opacity=String(growth);

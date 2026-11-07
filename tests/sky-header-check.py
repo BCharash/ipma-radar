@@ -104,6 +104,17 @@ try:
       renderSkyClouds(low,'low',95,.95);const large=amount();
       results.coverageGrowth=Math.abs(small-4.8)<.001 && Math.abs(medium-14.4)<.001 && Math.abs(large-22.8)<.001;
       results.stablePatches=low.children.length===24 && low.firstElementChild===first;
+      const tiers=['skyHighClouds','skyMidClouds','skyLowClouds'].map(id=>document.getElementById(id));
+      results.distinctLayouts=new Set(tiers.map(e=>e.firstElementChild.getAttribute('transform'))).size===3;
+      const drifts=Array.from(document.querySelectorAll('.cloud-layer')).map(e=>{
+        const animation=e.getAnimations()[0],previous=animation.currentTime;
+        animation.pause();animation.currentTime=0;
+        const start=new DOMMatrix(getComputedStyle(e).transform).m41;
+        animation.currentTime=10000;
+        const delta=new DOMMatrix(getComputedStyle(e).transform).m41-start;
+        animation.currentTime=previous;animation.play();return delta;
+      });
+      results.independentDrift=drifts[0]>0 && drifts[1]>drifts[0] && drifts[2]<0;
       renderSkyClouds(low,'low',0,0);results.zeroFootprint=amount()===0;
       results.intensity=getSkyCondition(61).intensity==='light' && getSkyCondition(63).intensity==='moderate' &&
         getSkyCondition(65).intensity==='heavy' && getSkyCondition(71).intensity==='light' &&

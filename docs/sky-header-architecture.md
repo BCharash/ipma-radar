@@ -79,14 +79,16 @@ For patch index `i` from 0 to 23:
 
 ```text
 amount = clamp(cover, 0, 100) / 100
-rank = (i × 7) modulo 24
+rank = (i × tier step + tier offset) modulo 24
 patch growth = clamp(amount × 24 − rank, 0, 1)
 patch opacity = patch growth
 patch scale = 0 when growth is zero; otherwise 0.3 + 0.85 × growth
 ```
 
 The rank permutes activation across the grid instead of filling left to right.
-Centers have fixed vertical offsets and shapes have fixed width variation;
+High uses step/offset 7/3, Mid 11/13, Low 5/7; each visits all 24 slots.
+Each tier has its own stable placement seed (High 5, Mid 13, Low 23).
+Centers have tier-specific horizontal/vertical offsets and fixed width variation;
 there is no random regeneration during refresh. Full patches stay at their
 tier's normal opacity. Only the boundary patch is partly grown/translucent.
 Increasing cover reveals and grows additional patches at stable locations.
@@ -101,6 +103,11 @@ Growth, patch opacity and whole-tier appearance changes transition over five
 seconds. Reduced motion disables those transitions as well as the drift
 animations. High wisps remain softer and move more slowly; low shapes are more
 defined and overlap as they fill. Movement is decorative, not measured wind.
+Drift uses linear timing with different starting phases (negative delays of
+High −117 s, Mid −83 s, Low −41 s). Each traversal lasts 320/240/160 seconds.
+High and mid initially move right at different rates; low initially moves left.
+Each independently reverses at its overscan limit using `alternate`, avoiding a
+visible reset. This bounded motion is artistic, not a wind simulation.
 Fog uses its condition label and available low-cloud cover; there is no separate
 fog simulation.
 
@@ -220,6 +227,59 @@ there is no map. Do not copy the entire radar stylesheet: it contains global
 `select`, page layout and control rules that could affect the host application.
 
 ## Proposed PraiasPortugal component contract
+
+### Existing host structure inspected on 7 November 2026
+
+Read-only inspection of `/Users/williamcharash/Documents/GitHub/PraiasPortugal`
+confirmed these integration points. No host files were changed.
+
+| Host file | Current role and future sky integration |
+| --- | --- |
+| `src/js/weatherService.js` | `getCurrentWeather(beach)` requests Open-Meteo using beach coordinates and returns cloudCover/Low/Mid/High, numeric weather/wind, times and hourly data. Adapt this snapshot instead of fetching again. |
+| `src/js/weatherFormatter.js` | Uses unit preferences and translations for badge/wind text. Do not parse these strings for animation. |
+| `src/js/dataManager.js` | Registers the weather service and coordinates refresh, duplicate-request prevention and freshness. Reuse its lifecycle instead of adding the standalone sky interval/cache. |
+| `src/js/conditions.js` | Consumes weather and formatters and invokes the celestial calculation/graphic. Can pass the same snapshot to the sky renderer. |
+| `src/js/celestialService.js` | Already calculates host sun/moon state. Evaluate reuse instead of substituting the standalone approximate moon. |
+
+The service already requests all three cloud percentages, but only 10-metre
+wind speed/direction/gusts. It does not request winds aloft. Some descriptions
+and icons are also produced in the service, so separation from formatting is
+useful but not completely strict. This was a source inspection, not a live
+validation of every request or host feature.
+
+### Optional future winds aloft — not implemented
+
+Open-Meteo documents hourly wind speed/direction at pressure levels. Candidate
+representative levels are 850 hPa (about 1.5 km) for Low, 500 hPa (about 5.6 km)
+for Mid and 250 hPa (about 10.4 km) for High. Pressure levels have variable
+heights and each cloud band can contain several winds; these would be proxies,
+not measured movement of the drawn clouds. See the
+[pressure-level documentation](https://open-meteo.com/en/docs#pressure-level-variables).
+
+A future implementation would:
+
+1. Add six speed/direction fields to the service's hourly request, or a separate
+   data-manager dataset if model/refresh requirements warrant it. 80/120/180-metre
+   winds are not substitutes for mid/high cloud winds.
+2. Match the valid hour to current conditions, normalize units and missing
+   fields, and return numeric per-tier winds with pressure/time metadata. Handle
+   Lisbon daylight-saving offsets explicitly rather than interpreting a local
+   clock string as an unambiguous instant.
+3. Map wind speeds to restrained apparent motion, accounting for the more distant
+   high layer; clamp extremes and retain decorative fallbacks. The formatter
+   handles unit preferences and text, while the renderer consumes raw numbers.
+4. Define a viewing direction before translating wind bearing to screen travel.
+   A banner has no geographic bearing by itself; meteorological wind origin must
+   be converted to travel direction. Continuous wind-driven travel would need
+   seamless wrapping instead of the current artistic reversal at overscan limits.
+5. Test calm/opposing/strong winds, missing levels, time alignment, unit settings,
+   refresh transitions, reduced motion and navigation cleanup.
+
+Data retrieval is a modest service extension. Convincing geographically meaningful
+motion is more involved because of the viewing convention, apparent-speed mapping
+and seamless wrapping. None of that is required for the current simple drift.
+
+### Proposed interface
 
 This is a target interface for the receiving implementation, not an exported
 API that exists in this repository:
