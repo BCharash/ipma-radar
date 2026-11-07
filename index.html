@@ -55,7 +55,7 @@
     </svg>
   </div>
 
-  <!-- High-altitude cloud tier (Cirrus wisps, ~6,000m - 12,000m) -->
+  <!-- High model cloud tier (8 km and above): illustrative wisps -->
   <svg class="cloud-layer cloud-layer-high" viewBox="0 0 1400 240" fill="none">
     <g id="skyHighClouds" opacity="0.35" filter="url(#cloudBlurCirrus)">
       <path d="M40 45 Q 260 22, 520 38 T 960 32 T 1360 48" stroke="var(--cloud-high-fill, #ffffff)" stroke-width="26" stroke-linecap="round" />
@@ -64,7 +64,7 @@
     </g>
   </svg>
 
-  <!-- Mid-altitude cloud tier (Altocumulus sheets, ~2,000m - 6,000m) -->
+  <!-- Mid model cloud tier (3–8 km): illustrative sheets -->
   <svg class="cloud-layer cloud-layer-mid" viewBox="0 0 1200 240" fill="none">
     <g id="skyMidClouds" opacity="0.45" filter="url(#cloudBlurHeavy)">
       <ellipse cx="250" cy="85" rx="220" ry="55" fill="var(--cloud-mid-fill, #ffffff)" />
@@ -74,7 +74,7 @@
     </g>
   </svg>
 
-  <!-- Low-altitude cloud tier (Cumulus/Stratus puffs, Surface - 2,000m) -->
+  <!-- Low model cloud tier (up to 3 km): illustrative puffs -->
   <svg class="cloud-layer cloud-layer-low" viewBox="0 0 1300 240" fill="none">
     <g id="skyLowClouds" opacity="0.60" filter="url(#cloudBlurMedium)">
       <circle cx="180" cy="110" r="50" fill="var(--cloud-low-fill, #ffffff)" />
@@ -95,16 +95,17 @@
 
   <!-- Dynamic rain/drizzle mist layer -->
   <div class="sky-rain-layer" id="skyRainLayer" hidden></div>
+  <div class="sky-snow-layer" id="skySnowLayer" hidden></div>
 
   <svg width="0" height="0" class="sky-filter-defs">
     <defs>
-      <filter id="cloudBlurCirrus" x="-20%" y="-20%" width="140%" height="140%">
+      <filter id="cloudBlurCirrus" x="-20%" y="-100%" width="140%" height="300%">
         <feGaussianBlur stdDeviation="16" />
       </filter>
-      <filter id="cloudBlurHeavy" x="-20%" y="-20%" width="140%" height="140%">
+      <filter id="cloudBlurHeavy" x="-20%" y="-100%" width="140%" height="300%">
         <feGaussianBlur stdDeviation="12" />
       </filter>
-      <filter id="cloudBlurMedium" x="-20%" y="-20%" width="140%" height="140%">
+      <filter id="cloudBlurMedium" x="-20%" y="-100%" width="140%" height="300%">
         <feGaussianBlur stdDeviation="6" />
       </filter>
     </defs>
@@ -112,8 +113,10 @@
 </div>
 <div id="controls">
 
+<div id="skyHeading">
 <div id="title">Sky Flow</div>
-<span id="skyWeatherBadge" class="sky-weather-badge" aria-label="Current weather condition" hidden></span>
+<span id="skyWeatherBadge" class="sky-weather-badge" role="status" hidden></span>
+</div>
 
 <select id="historySelect" aria-label="Radar history">
   <option value="1">1 h</option>

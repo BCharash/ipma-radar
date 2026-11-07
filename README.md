@@ -6,6 +6,13 @@ integration into PraiasPortugal.
 Open `index.html` with Live Server to run the radar. `location-test.html` is a
 separate geolocation diagnostic page; opening it runs only the location test.
 
+The sky banner uses model-based weather for the startup GPS location, or the map's
+default location if GPS is unavailable. It keeps that location during map navigation
+and refreshes weather every 15 minutes. The badge shows condition time and flags
+stale data. High, mid and low cloud drawings follow their own cloud-cover values;
+rain and snow use separate effects. See the [sky header architecture](docs/sky-header-architecture.md)
+for the cloud-layer explanation and weather fallback behavior.
+
 ## Satellite and radar
 
 Choose **Map**, **GeoColour satellite**, **Visible (daylight)**, or **Infrared
@@ -216,6 +223,10 @@ satellite-only/combined animation, timestamp ordering and lag labels,
 newest-first loading, automatic Low-to-High preparation, High fallback batches, automatic coverage, cache reuse, registration after pan/zoom, and failure recovery. It requires network access
 and can take several minutes. It saves a mobile screenshot in the system
 temporary directory. Real iPhone/Safari testing remains separate.
+
+Run `python3 tests/sky-header-check.py` for deterministic sky-header checks with
+mocked weather and startup GPS, including cloud tiers, rain/snow, visibility,
+freshness, request cancellation and reduced motion.
 
 
 ## SkyFlow cloud lab

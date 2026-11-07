@@ -78,6 +78,7 @@ function useCurrentLocation(
     options.silent === true;
 
   if(!navigator.geolocation){
+    if(silent) resolveSkyStartupLocation();
 
     if(!silent){
       alert(
@@ -147,9 +148,7 @@ function useCurrentLocation(
         }
       );
 
-      if(typeof setSkyLocation === "function"){
-        setSkyLocation(lat, lon, true);
-      }
+      if(silent) resolveSkyStartupLocation(lat,lon,true);
 
       if(!silent){
         hideStatus();
@@ -157,6 +156,7 @@ function useCurrentLocation(
     },
 
     () => {
+      if(silent) resolveSkyStartupLocation();
 
       if(!silent){
 

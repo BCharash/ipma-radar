@@ -1,140 +1,147 @@
-# Sky Header Architecture & Implementation
+# Sky header architecture and behavior
 
-Documentation of the dynamic atmospheric sky header for IPMA Radar, including astronomical calculations, live meteorological cloud synchronization, multi-tier altitude rendering, and future improvement roadmap.
+The header is an illustrative sky driven by solar elevation and Open-Meteo
+model-based current conditions. It is not a photograph, a direct station
+observation, or a reconstruction of the sky overhead. Radar and satellite
+playback keep their own observation times; the header always represents current
+conditions at the startup location.
 
----
+## Startup location and lifecycle
 
-## 1. Overview & Objective
+`initSkyTheme()` renders sun-based colours immediately. The existing map
+geolocation request resolves the header location once through
+`resolveSkyStartupLocation()`. The sky does not make a second GPS request.
 
-The IPMA Radar header previously used a flat white `#ffffff` background with standard grey-bordered HTML controls. While functional, it lacked atmospheric connection to the weather being monitored on the radar and satellite map below.
+- GPS success: use the coordinates obtained at startup.
+- GPS denied, unavailable or timed out: use `DEFAULT_LOCATION` from
+  `radarMap.js`, matching the map fallback. The badge tooltip identifies this as
+  the default map location.
+- Panning, zooming and later presses of Current location do not move the banner
+  location. Reload the app to choose a new startup location.
+- Historical GPS coordinates are not reused as the current physical location.
+- Solar colours update each minute; weather refreshes every 15 minutes for the
+  fixed startup coordinates.
 
-The goal of this redesign was to transform the header into an **ambient, living atmospheric window** that:
-1. Visually mirrors the actual sky outside in real time.
-2. Represents distinct **altitude tiers of clouds** (High, Mid, Low) driven by live weather observations.
-3. Automatically transitions across solar phases (Daylight, Golden Hour, Sunset, Twilight, Night).
-4. Elevates control aesthetics with frosted glassmorphism while maintaining 100% WCAG contrast and usability.
-5. Keeps motion tranquil, slow, and subtle to match ground-observed cloud movement.
-6. Defaults to **Leiria, Portugal** (`39.7436° N, -8.8071° W`), while dynamically adapting to the user's GPS coordinates when requested.
+## Weather service and freshness
 
----
+`fetchLiveWeather()` requests temperature, total cloud cover, low/mid/high cloud
+cover, and WMO weather code from the Open-Meteo Forecast API. `timeformat=unixtime`
+provides an unambiguous condition timestamp. Display times use Europe/Lisbon.
+The Open-Meteo and CC BY 4.0 links in the map's bottom attribution area credit
+the weather provider alongside Leaflet and the map sources. This credit persists
+when switching between the standard and GeoColour maps.
 
-## 2. Architecture & What Has Been Implemented
+Responses store the requested coordinates, condition time and fetch time.
+The localStorage cache (`ipmaSkyLiveWeather`) is accepted only for matching
+coordinates and valid timestamps. Cache entries from the earlier implementation,
+which lack condition time, are ignored.
 
-### A. Real-Time Solar Engine (`src/js/skyTheme.js`)
-* **Astronomical Solar Elevation**: Implements standard solar position equations:
-  $$\sin(\alpha) = \sin(\phi)\sin(\delta) + \cos(\phi)\cos(\delta)\cos(H)$$
-  where $\phi$ is latitude, $\delta$ is solar declination (accounting for seasonal day-of-year tilt), and $H$ is the solar hour angle adjusted by the Equation of Time (EoT) and longitude.
-* **Palette Transitions**:
-  * **Daylight** ($\alpha > 12^\circ$): Azure-to-sky-blue gradient (`#1d6fe9` $\to$ `#4facfe` $\to$ `#8ec5fc`).
-  * **Golden Hour** ($3^\circ \le \alpha \le 12^\circ$): Warm amber and soft apricot tones (`#25559c` $\to$ `#d97706` $\to$ `#fbbf24`).
-  * **Civil Twilight / Sunset** ($-4^\circ \le \alpha < 3^\circ$): Fiery orange, rose, and dusky violet (`#1e293b` $\to$ `#9a3412` $\to$ `#ea580c` $\to$ `#f97316`).
-  * **Dusk** ($-12^\circ \le \alpha < -4^\circ$): Deep nautical indigo and twilight purple (`#090d1a` $\to$ `#1e1b4b` $\to$ `#312e81`).
-  * **Night** ($\alpha < -12^\circ$): Midnight navy and charcoal slate (`#030712` $\to$ `#0b1329` $\to$ `#111d3d`).
-* **Update Cadence**: An ambient timer updates every 60 seconds to smoothly track the sun across the horizon.
+- Under 15 minutes old: reuse cached conditions.
+- 15–60 minutes old: show the last conditions with a **stale** label while
+  attempting a refresh.
+- 60 minutes old or older: show **Weather unavailable**, hide weather-driven
+  clouds and precipitation, and retain the solar colour palette.
+- Age is the older of fetch age and condition age; fetching an old model time
+  does not make that condition fresh.
+- Missing temperature does not prevent valid cloud and condition rendering.
+  Missing cloud values do not invent clouds; unknown codes do not imply sunshine.
+- Requests time out after 10 seconds. Starting another request aborts the previous
+  one; generation and coordinate checks also reject late responses even if the
+  transport ignores cancellation.
 
----
+Open-Meteo describes current conditions as weather-model data, not direct local
+observations. See [API documentation](https://open-meteo.com/en/docs).
 
-### B. Live Meteorological Multi-Tier Cloud Sync & GPS-on-Startup
-The application queries Open-Meteo's open meteorological feed for current observations:
+## How the cloud tiers work
+
+Three SVG drawings in `index.html` are layered behind the controls. The shapes
+are fixed artwork. They do not identify actual cloud species or positions from
+the API. Separate model percentages control how strongly each drawing appears.
+The model altitude bands below follow Open-Meteo's variable definitions.
+
+| Tier | Model band | Artwork | SVG blur | Maximum opacity | Drift cycle |
+| --- | --- | --- | --- | --- | --- |
+| High | 8 km and above | Long curved strokes, suggesting wisps | 16 | 0.75 | 320 seconds |
+| Mid | 3–8 km | Overlapping wide ellipses, suggesting sheets | 12 | 0.85 | 240 seconds |
+| Low | Up to 3 km, including fog | Circles and ellipses, suggesting rounded puffs | 6 | 0.95 | 160 seconds |
+
+For each tier:
+
 ```text
-https://api.open-meteo.com/v1/forecast?latitude=39.7436&longitude=-8.8071&current=temperature_2m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,weather_code,is_day
+opacity = clamp(model cloud cover, 0, 100) / 100 × maximum opacity
 ```
-* **GPS Check on Startup**: When the app launches, `checkGpsOnStartup()` queries `navigator.geolocation` immediately to detect the user's physical position without requiring manual button clicks.
-* **Instantaneous Zero-Latency Startup**: The detected GPS coordinates are saved in `localStorage` under `ipmaUserGpsCoords`. On subsequent app opens, the sky header renders using the user's real physical coordinates on frame 1 before asynchronous location queries even complete.
-* **Location Fallback**: Defaults gracefully to Leiria (`39.7436, -8.8071`) if geolocation is not available or before first permission.
-* **Live Temperature & Condition Badge (`#skyWeatherBadge`)**: An elegant frosted-glass badge beside the "IPMA" title displays the current temperature and weather condition (e.g., `21°C · Overcast`), dynamically updating as conditions change.
-* **Caching & Performance**: Responses are cached in `localStorage` under `ipmaSkyLiveWeather` with a **15-minute Time-To-Live (TTL)**.
-* **Non-Blocking Resiliency**: All network requests fail silently to the astronomical fallback if offline, ensuring the interface never stalls.
-* **Dynamic Coordinate Binding**: When the user clicks the "Current location" button in the map, `setSkyLocation(lat, lon, true)` is called, updating the solar calculation and refreshing local weather observations immediately.
 
----
+For example, 80% high cover and 0% low/mid cover gives high opacity 0.60 and
+zero opacity for the other drawings. No low cloud is added just because total
+cloud cover is high. At 0% cover, that tier disappears completely.
 
-### C. Multi-Altitude Cloud Tier Rendering
-Real cloud systems exist at different altitudes with distinct physical behaviors and visual characteristics. The header implements three dedicated procedural SVG layers:
+Opacity is a visual proxy for amount: 80% cloud cover does not mean exactly 80%
+of the header's pixels are covered. The drawings keep the same footprint.
+Likewise, the three percentages must not be added together: cloud layers may
+overlap vertically. Total cover is a separate input used for sky palette and
+star visibility, not to manufacture missing altitude layers.
 
-| Layer | Meteorological Types | Altitude Range | Visual Appearance | Blur Filter | Animation Period |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **High Tier** (`.cloud-layer-high`) | *Cirrus, Cirrostratus* | 6,000 m – 12,000 m+ | Stretched, fibrous, semi-transparent horizontal wisps | `stdDeviation="16"` | 320 s (~5.3 min) |
-| **Mid Tier** (`.cloud-layer-mid`) | *Altocumulus, Altostratus* | 2,000 m – 6,000 m | Broad, soft undulating cloud sheets that diffuse sunlight | `stdDeviation="12"` | 240 s (4.0 min) |
-| **Low Tier** (`.cloud-layer-low`) | *Cumulus, Stratocumulus, Stratus* | Surface – 2,000 m | Dense, billowy puffs with defined tops and flat, shaded undersides | `stdDeviation="6"` | 160 s (~2.7 min) |
+High clouds use the softest blur and slowest drift. Low clouds have more defined
+edges and faster drift. The speed and direction are decorative CSS choices,
+not measured wind at those heights. Colours change with the solar palette;
+cloud shape and species do not change in response to weather codes. Fog uses
+its condition label and available low-cloud cover; there is no separate fog
+simulation.
 
-* **Individual Opacity Scaling**:
-  * `--cloud-high-opacity` scales proportionally to `cloud_cover_high`.
-  * `--cloud-mid-opacity` scales proportionally to `cloud_cover_mid`.
-  * `--cloud-low-opacity` scales proportionally to `cloud_cover_low`.
-* **Ground-Observed Ambient Motion**: Animation keyframe translations are capped at $\pm 4\%$ to $7\%$ over several minutes (~0.3 px/sec), creating a peaceful, stately drift that matches looking out of a window.
+## Rain, snow and other conditions
 
----
+One explicit WMO mapping supplies the text, icon and precipitation effect:
 
-### D. Overcast & Weather Gloom Desaturation
-When total cloud cover exceeds 65–70% (such as when Leiria is overcast at 98%):
-* The vibrant azure blue is dynamically interpolated into an authentic **overcast silver-grey / slate-blue** (`#5c6b7a` $\to$ `#8292a1` $\to$ `#a4b3c2`).
-* When active precipitation occurs (WMO `weather_code` $\ge 51$), the sky dims into a darker, moody graphite storm gradient (`#374151` $\to$ `#4b5563` $\to$ `#6b7280`).
-* Low clouds gain density to form a continuous overcast ceiling.
+| Codes | Condition | Effect |
+| --- | --- | --- |
+| 0, 1, 2, 3 | Clear to overcast | No precipitation |
+| 45, 48 | Fog | No precipitation |
+| 51, 53, 55 | Drizzle | Diagonal rain streaks |
+| 56, 57 | Freezing drizzle | Rain streaks; freezing label |
+| 61, 63, 65 | Rain | Rain streaks |
+| 66, 67 | Freezing rain | Rain streaks; freezing label |
+| 71, 73, 75, 77 | Snow / snow grains | Slower falling dots |
+| 80, 81, 82 | Rain showers | Rain streaks |
+| 85, 86 | Snow showers | Falling dots |
+| 95, 97 | Thunderstorm | Rain streaks and storm icon |
+| 96, 99 | Thunderstorm with hail | Rain streaks and explicit hail label |
+| Unknown / missing | Conditions unavailable | No precipitation |
 
----
+Rain and snow are mutually exclusive decorative layers. Both are CSS patterns;
+no particle engine is involved. Snow is slower and round rather than diagonal.
+Intensity, accumulation, individual hailstones and lightning are not simulated.
+Radar echoes do not control these effects. Precipitation also selects a subdued
+palette during broad daylight; other solar phases keep their own palettes.
 
----
+## Solar colours, moon and stars
 
-### E. Atmospheric Rain Sheen Layer
-* **Precipitation Detection**: When live weather observations indicate drizzle, rain, showers, or storms (WMO codes $\ge 51$), or when local radar echo is active, the `#skyRainLayer` is automatically unhidden.
-* **Visual Rendering**: Pure CSS dual repeating linear gradients at $108^\circ$ diagonal tilt with an ultra-lightweight GPU translation animation (`@keyframes rainFall`), creating an authentic falling rain mist without performance overhead.
+`getSolarElevation()` uses approximate declination and equation-of-time formulas.
+The palette selects fixed daylight, golden-hour, sunrise/sunset, twilight and
+night gradients. Cloud cover can select an overcast variant. These are threshold
+changes, not continuous colour interpolation or a physically accurate sky model.
 
----
+The moon is decorative. Its phase is estimated from a fixed mean lunar cycle;
+its fixed header position does not represent local altitude, direction, rise or
+set. Its tooltip identifies that limitation. Stars are decorative, with no actual
+constellation positioning. They appear only at night with known total cloud
+cover below 85%; the illustrative moon is hidden at 92% cover or more. Unknown
+weather hides both rather than assuming clear skies.
 
-### F. Nighttime Astronomical Moon Phases & Starfield
-* **Synodic Lunar Calculation**: Calculates the exact lunar phase fraction ($0.0 \to 1.0$) from the known astronomical epoch:
-  $$D = \text{elapsed time since known new moon}; \quad \text{phase} = (D \pmod{29.530588\text{ days}}) / 29.530588$$
-* **Procedural SVG Lunar Shadow**:
-  * Adjusts an SVG terminator arc dynamically based on phase angle $\cos(2\pi \cdot \text{phase})$, accurately rendering New Moon, Waxing Crescent, First Quarter, Waxing Gibbous, Full Moon, Waning Gibbous, Last Quarter, and Waning Crescent.
-  * Emits a delicate pearlescent radial glow halo (`#moonGlowGrad`).
-* **Twinkling Starfield (`#skyStarsLayer`)**:
-  * Features multi-offset star clusters with ambient asynchronous pulsing keyframes (`starPulse`).
-  * Visible on clear and partly cloudy nights (hidden when cloud cover exceeds 85% to preserve physical realism).
+## Rendering, accessibility and verification
 
----
+`skyTheme.js` owns weather state, solar calculations and DOM updates. SVG and
+CSS in `index.html` and `radar.css` own the drawings and animation. Backgrounds
+are decorative and cannot intercept pointer events.
 
-### G. Frosted Glassmorphism & Accessibility Guard (`src/css/radar.css`)
-* **Daylight Controls**: `background: rgba(255, 255, 255, 0.65)`, `backdrop-filter: blur(8px)`, delicate border `rgba(255, 255, 255, 0.65)`, soft shadows, and dark slate text `#1e293b`.
-* **Automatic Dark-Mode Contrast (`.sky-dark`)**:
-  * Automatically engaged at twilight, night, or during severe rain gloom.
-  * Inverts buttons and dropdowns to dark frosted glass (`rgba(15, 23, 42, 0.60)`).
-  * Inverts text and SVG strokes to crisp off-white (`#f1f5f9`), meeting WCAG 2.1 AA contrast standards.
-* **Accessibility**: Includes `@media (prefers-reduced-motion: reduce)` support to freeze cloud animations for users who prefer static interfaces.
+An explicit header `[hidden]` rule handles SVG visibility and overrides badge
+layout styles. The View, opacity and status rows remain transparent over the sky;
+label colours and text shadows adapt to the light/dark palette. Reduced-motion preferences stop
+cloud, rain, snow and star animations. These measures are not a certification of
+all WCAG requirements. Filters, gradients and animations have rendering costs;
+physical iPhone/Safari performance remains a separate acceptance check.
 
----
-
-## 3. Code Modifications Breakdown
-
-1. **`index.html`**:
-   * Inserted `#skyBackground` container inside `#header` before `#controls`.
-   * Added the 3 SVG cloud tier layers (`#skyHighClouds`, `#skyMidClouds`, `#skyLowClouds`) and Gaussian blur definitions.
-   * Included `<script src="src/js/skyTheme.js"></script>` before `src/js/app.js`.
-
-2. **`src/js/skyTheme.js`**:
-   * Created new module containing solar equations, Open-Meteo live weather client, local storage caching, Leiria defaults, and DOM custom property bindings.
-
-3. **`src/css/radar.css`**:
-   * Added `#skyBackground`, `.cloud-layer-high`, `.cloud-layer-mid`, `.cloud-layer-low`.
-   * Added ground-observed keyframe animations (`cloudDriftHigh`, `cloudDriftMid`, `cloudDriftLow`).
-   * Updated `select`, `.control-button`, `#layerControls`, and `#opacityControls` to frosted glass.
-   * Added `.sky-dark` rules for automated night and storm contrast.
-
-4. **`src/js/app.js`**:
-   * Wired `initSkyTheme()` into `initialize()` startup sequence.
-
-5. **`src/js/radarLocation.js`**:
-   * Connected `setSkyLocation(lat, lon)` to geolocation callback so sky lighting tracks user movement.
-
----
-
-## 4. Completed Enhancements & Future Roadmap
-
-### Completed in this Milestone:
-1. **Option A — Live Weather & Temperature Badge**: Real-time ambient temperature and weather symbol (e.g. `☁️ 21°C · Overcast`) beside IPMA logo.
-2. **Option B — Rain & Drizzle Sheen Layer**: Dynamic diagonal falling rain mist activated during active precipitation.
-3. **Option C — Nighttime Moon Phases & Starfield**: Exact astronomical synodic moon phase rendering with halo and twinkling starfield for clear/partly cloudy nights.
-
-### Future Improvement Roadmap:
-1. **Direct IPMA Surface Station Telemetry**: Pull exact ground wind speed, humidity, and barometric pressure from IPMA's surface observation API (`https://api.ipma.pt/open-data/observation/meteorology/stations/obs-surface.geojson`) for station 1210702 (Leiria/Aeródromo).
-2. **Interactive Location & Weather Lab Tool**: Provide an interactive control in `labs/` to test simulated conditions across Madeira, Azores, Porto, and Algarve.
+Run `python3 tests/sky-header-check.py` for deterministic Chrome checks of startup
+GPS/fallback, independent cloud tiers, precipitation, visibility, stale/expired
+data, request races, cache reuse, reduced motion and mobile layout. Run
+`python3 tests/browser-check.py --quick` for the existing radar/GeoColour regression
+suite. Both use isolated Chrome profiles and require access to browser assets.

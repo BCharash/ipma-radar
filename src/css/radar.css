@@ -38,6 +38,9 @@ html,body{
   overflow:hidden
 }
 
+/* SVG does not supply HTML's hidden behavior; author display rules can also override it. */
+#header [hidden]{display:none!important}
+
 .cloud-layer{
   position:absolute;
   pointer-events:none;
@@ -155,8 +158,25 @@ html,body{
   100%{ background-position:-20px 100px, -15px 100px }
 }
 
+.sky-snow-layer{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:1;
+  opacity:.7;
+  background-image:radial-gradient(circle, #fff 1.5px, transparent 2px),
+    radial-gradient(circle, #fff 1px, transparent 1.7px);
+  background-size:43px 47px, 67px 61px;
+  background-position:0 0, 19px 23px;
+  animation:snowFall 8s linear infinite
+}
+
+@keyframes snowFall{
+  to{background-position:43px 94px, 86px 145px}
+}
+
 @media (prefers-reduced-motion: reduce){
-  .cloud-layer, .star-twinkle-1, .star-twinkle-2, .star-twinkle-3, .sky-rain-layer{
+  .cloud-layer, .star-twinkle-1, .star-twinkle-2, .star-twinkle-3, .sky-rain-layer, .sky-snow-layer{
     animation:none!important
   }
 }
@@ -246,6 +266,9 @@ html,body{
   white-space:nowrap;
   margin-right:2px;
   color:#fff;
+  background:#1e293b;
+  border-radius:4px;
+  padding:2px 4px;
   text-shadow:0 1px 3px rgba(0,0,0,.3);
   transition:color .3s ease, text-shadow .3s ease
 }
@@ -266,6 +289,14 @@ html,body{
   box-shadow:0 1px 3px rgba(0,0,0,.08);
   white-space:nowrap;
   transition:background .2s ease, border-color .2s ease, color .2s ease
+}
+
+#skyHeading{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:6px;
+  max-width:100%
 }
 
 select{
@@ -627,8 +658,10 @@ select{
 @media(min-width:360px) and (max-width:600px){
   #controls{
     display:grid;
-    grid-template-columns:auto 58px 70px repeat(5,minmax(0,1fr))
+    grid-template-columns:58px 70px repeat(5,minmax(0,1fr))
   }
+
+  #skyHeading{grid-column:1/-1}
 
   #controls .control-button{
     width:100%;
