@@ -18,6 +18,43 @@
 <div id="app">
 
 <div id="header">
+<div id="skyBackground" class="sky-background" aria-hidden="true">
+  <svg class="cloud-layer cloud-layer-back" viewBox="0 0 1200 240" fill="none">
+    <g id="skyBackClouds" opacity="0.35" filter="url(#cloudBlurHeavy)">
+      <ellipse cx="250" cy="90" rx="200" ry="60" fill="var(--cloud-back-fill, #ffffff)" />
+      <ellipse cx="450" cy="80" rx="240" ry="75" fill="var(--cloud-back-fill, #ffffff)" />
+      <ellipse cx="780" cy="95" rx="280" ry="70" fill="var(--cloud-back-fill, #ffffff)" />
+      <ellipse cx="1020" cy="85" rx="190" ry="55" fill="var(--cloud-back-fill, #ffffff)" />
+    </g>
+  </svg>
+  <svg class="cloud-layer cloud-layer-front" viewBox="0 0 1300 240" fill="none">
+    <g id="skyFrontClouds" opacity="0.65" filter="url(#cloudBlurMedium)">
+      <circle cx="180" cy="110" r="50" fill="var(--cloud-front-fill, #ffffff)" />
+      <circle cx="230" cy="95" r="70" fill="var(--cloud-front-fill, #ffffff)" />
+      <circle cx="310" cy="105" r="60" fill="var(--cloud-front-fill, #ffffff)" />
+      <ellipse cx="250" cy="125" rx="150" ry="40" fill="var(--cloud-front-fill, #ffffff)" />
+
+      <circle cx="680" cy="100" r="65" fill="var(--cloud-front-fill, #ffffff)" />
+      <circle cx="750" cy="85" r="80" fill="var(--cloud-front-fill, #ffffff)" />
+      <circle cx="830" cy="98" r="65" fill="var(--cloud-front-fill, #ffffff)" />
+      <ellipse cx="760" cy="120" rx="180" ry="45" fill="var(--cloud-front-fill, #ffffff)" />
+
+      <circle cx="1120" cy="105" r="55" fill="var(--cloud-front-fill, #ffffff)" />
+      <circle cx="1180" cy="90" r="70" fill="var(--cloud-front-fill, #ffffff)" />
+      <ellipse cx="1160" cy="125" rx="140" ry="38" fill="var(--cloud-front-fill, #ffffff)" />
+    </g>
+  </svg>
+  <svg width="0" height="0" class="sky-filter-defs">
+    <defs>
+      <filter id="cloudBlurHeavy" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="14" />
+      </filter>
+      <filter id="cloudBlurMedium" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="7" />
+      </filter>
+    </defs>
+  </svg>
+</div>
 <div id="controls">
 
 <div id="title">IPMA</div>
@@ -241,6 +278,7 @@
 <script src="src/js/satellite.js"></script>
 <script src="src/js/satelliteCoverage.js"></script>
 <script src="src/js/satelliteDetail.js"></script>
+<script src="src/js/skyTheme.js"></script>
 <script src="src/js/app.js"></script>
 
 <svg

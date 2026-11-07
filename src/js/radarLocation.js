@@ -147,6 +147,10 @@ function useCurrentLocation(
         }
       );
 
+      if(typeof setSkyLocation === "function"){
+        setSkyLocation(lat, lon);
+      }
+
       if(!silent){
         hideStatus();
       }

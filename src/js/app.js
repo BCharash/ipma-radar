@@ -199,6 +199,10 @@ async function rebuildRadar(){
 
 async function initialize(){
 
+  if(typeof initSkyTheme === "function"){
+    initSkyTheme();
+  }
+
   initializeMap();
 
   initializeSatellite();

@@ -22,13 +22,66 @@ html,body{
   position:relative;
   flex:0 0 auto;
   width:100%;
-  background:#fff;
-  border-bottom:1px solid #ddd;
+  background:var(--sky-gradient, linear-gradient(180deg, #1d6fe9 0%, #4facfe 50%, #8ec5fc 100%));
+  border-bottom:1px solid rgba(0,0,0,.15);
   padding:8px 10px;
-  z-index:1000
+  z-index:1000;
+  overflow:hidden;
+  transition:background 1.5s ease, border-color 0.5s ease
+}
+
+.sky-background{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:0;
+  overflow:hidden
+}
+
+.cloud-layer{
+  position:absolute;
+  pointer-events:none;
+  will-change:transform
+}
+
+/* Subtle, ground-observed ambient cloud drift: very slow and stately */
+.cloud-layer-back{
+  top:-20px;
+  left:-25%;
+  width:150%;
+  height:140px;
+  animation:cloudDriftSlow 280s ease-in-out infinite alternate
+}
+
+.cloud-layer-front{
+  top:-15px;
+  left:-30%;
+  width:160%;
+  height:150px;
+  animation:cloudDriftFast 180s ease-in-out infinite alternate
+}
+
+@keyframes cloudDriftSlow{
+  0%{transform:translate3d(-5%,0,0)}
+  50%{transform:translate3d(7%,-1px,0)}
+  100%{transform:translate3d(-5%,0,0)}
+}
+
+@keyframes cloudDriftFast{
+  0%{transform:translate3d(8%,0,0)}
+  50%{transform:translate3d(-6%,1px,0)}
+  100%{transform:translate3d(8%,0,0)}
+}
+
+.sky-filter-defs{
+  position:absolute;
+  width:0;
+  height:0
 }
 
 #controls{
+  position:relative;
+  z-index:2;
   width:100%;
   display:flex;
   align-items:center;
@@ -37,12 +90,17 @@ html,body{
 }
 
 #layerControls{
+  position:relative;
+  z-index:2;
   display:flex;
   align-items:center;
   flex-wrap:wrap;
   gap:8px;
   margin-top:6px;
-  font-size:13px
+  font-size:13px;
+  color:#0f172a;
+  text-shadow:0 1px 2px rgba(255,255,255,.5);
+  transition:color .3s ease, text-shadow .3s ease
 }
 
 .radar-toggle{
@@ -54,10 +112,14 @@ html,body{
 }
 
 #satelliteStatus, #satelliteHighStatus{
+  position:relative;
+  z-index:2;
   margin-top:4px;
   font-size:11px;
   line-height:1.4;
-  color:#444
+  color:#1e293b;
+  text-shadow:0 1px 2px rgba(255,255,255,.5);
+  transition:color .3s ease
 }
 
 #satelliteStatus[data-state="error"]{
@@ -65,12 +127,17 @@ html,body{
 }
 
 #opacityControls{
+  position:relative;
+  z-index:2;
   display:flex;
   align-items:center;
   flex-wrap:wrap;
   gap:5px;
   margin-top:4px;
-  font-size:12px
+  font-size:12px;
+  color:#0f172a;
+  text-shadow:0 1px 2px rgba(255,255,255,.5);
+  transition:color .3s ease, text-shadow .3s ease
 }
 
 #opacityControls input{
@@ -93,19 +160,26 @@ html,body{
 
 #title{
   font-size:17px;
-  font-weight:600;
+  font-weight:700;
   white-space:nowrap;
-  margin-right:2px
+  margin-right:2px;
+  color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.3);
+  transition:color .3s ease, text-shadow .3s ease
 }
 
 select{
   height:34px;
-  border:1px solid #bbb;
+  border:1px solid rgba(255,255,255,.65);
   border-radius:6px;
-  background:#fff;
-  padding:0 4px;
+  background:rgba(255,255,255,.65);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  padding:0 6px;
   font-size:14px;
-  color:#222
+  color:#1e293b;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);
+  transition:background .2s ease, border-color .2s ease, color .2s ease
 }
 
 #historySelect{
@@ -123,23 +197,29 @@ select{
   height:34px;
   flex:0 0 34px;
   padding:0;
-  border:1px solid #bbb;
+  border:1px solid rgba(255,255,255,.65);
   border-radius:6px;
-  background:#fff;
+  background:rgba(255,255,255,.65);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
   display:flex;
   align-items:center;
   justify-content:center;
   cursor:pointer;
-  color:#222;
-  -webkit-tap-highlight-color:transparent
+  color:#1e293b;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);
+  -webkit-tap-highlight-color:transparent;
+  transition:background .2s ease, border-color .2s ease, transform .1s ease, color .2s ease
 }
 
 .control-button:hover{
-  background:#f3f3f3
+  background:rgba(255,255,255,.85);
+  border-color:rgba(255,255,255,.85)
 }
 
 .control-button:active{
-  background:#e8e8e8
+  background:rgba(255,255,255,.45);
+  transform:scale(.97)
 }
 
 .control-button svg{
@@ -160,8 +240,67 @@ select{
 }
 
 .loop-button.loop-active{
-  background:#e8e8e8;
-  border-color:#888
+  background:rgba(255,255,255,.9);
+  border-color:#2563eb;
+  color:#2563eb
+}
+
+/* Dark mode theme for sunset, twilight, and night */
+#header.sky-dark{
+  border-bottom:1px solid rgba(255,255,255,.15)
+}
+
+#header.sky-dark #title{
+  color:#f8fafc;
+  text-shadow:0 1px 4px rgba(0,0,0,.7)
+}
+
+#header.sky-dark select{
+  background:rgba(15,23,42,.6);
+  border-color:rgba(255,255,255,.2);
+  color:#f1f5f9
+}
+
+#header.sky-dark select option{
+  background:#1e293b;
+  color:#f1f5f9
+}
+
+#header.sky-dark .control-button{
+  background:rgba(15,23,42,.6);
+  border-color:rgba(255,255,255,.2);
+  color:#f1f5f9
+}
+
+#header.sky-dark .control-button:hover{
+  background:rgba(30,41,59,.8);
+  border-color:rgba(255,255,255,.35)
+}
+
+#header.sky-dark .control-button:active{
+  background:rgba(15,23,42,.4)
+}
+
+#header.sky-dark .loop-button.loop-active{
+  background:rgba(59,130,246,.4);
+  border-color:rgba(147,197,253,.6);
+  color:#ffffff
+}
+
+#header.sky-dark #layerControls,
+#header.sky-dark #opacityControls{
+  color:#f1f5f9;
+  text-shadow:0 1px 3px rgba(0,0,0,.7)
+}
+
+#header.sky-dark #satelliteStatus,
+#header.sky-dark #satelliteHighStatus{
+  color:#cbd5e1;
+  text-shadow:0 1px 3px rgba(0,0,0,.7)
+}
+
+#header.sky-dark #satelliteStatus[data-state="error"]{
+  color:#fca5a5
 }
 
 #map{
