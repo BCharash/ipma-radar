@@ -34,15 +34,18 @@ The goal of this redesign was to transform the header into an **ambient, living 
 
 ---
 
-### B. Live Meteorological Multi-Tier Cloud Sync
+### B. Live Meteorological Multi-Tier Cloud Sync & GPS-on-Startup
 The application queries Open-Meteo's open meteorological feed for current observations:
 ```text
-https://api.open-meteo.com/v1/forecast?latitude=39.7436&longitude=-8.8071&current=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,weather_code,is_day
+https://api.open-meteo.com/v1/forecast?latitude=39.7436&longitude=-8.8071&current=temperature_2m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,weather_code,is_day
 ```
-* **Location Default**: Initialized to Leiria (`39.7436, -8.8071`).
+* **GPS Check on Startup**: When the app launches, `checkGpsOnStartup()` queries `navigator.geolocation` immediately to detect the user's physical position without requiring manual button clicks.
+* **Instantaneous Zero-Latency Startup**: The detected GPS coordinates are saved in `localStorage` under `ipmaUserGpsCoords`. On subsequent app opens, the sky header renders using the user's real physical coordinates on frame 1 before asynchronous location queries even complete.
+* **Location Fallback**: Defaults gracefully to Leiria (`39.7436, -8.8071`) if geolocation is not available or before first permission.
+* **Live Temperature & Condition Badge (`#skyWeatherBadge`)**: An elegant frosted-glass badge beside the "IPMA" title displays the current temperature and weather condition (e.g., `21°C · Overcast`), dynamically updating as conditions change.
 * **Caching & Performance**: Responses are cached in `localStorage` under `ipmaSkyLiveWeather` with a **15-minute Time-To-Live (TTL)**.
 * **Non-Blocking Resiliency**: All network requests fail silently to the astronomical fallback if offline, ensuring the interface never stalls.
-* **Dynamic Coordinate Binding**: When the user clicks the "Current location" button in the map, `setSkyLocation(lat, lon)` is called, updating the solar calculation and refreshing local weather observations if coordinates have changed significantly.
+* **Dynamic Coordinate Binding**: When the user clicks the "Current location" button in the map, `setSkyLocation(lat, lon, true)` is called, updating the solar calculation and refreshing local weather observations immediately.
 
 ---
 
@@ -71,7 +74,27 @@ When total cloud cover exceeds 65–70% (such as when Leiria is overcast at 98%)
 
 ---
 
-### E. Frosted Glassmorphism & Accessibility Guard (`src/css/radar.css`)
+---
+
+### E. Atmospheric Rain Sheen Layer
+* **Precipitation Detection**: When live weather observations indicate drizzle, rain, showers, or storms (WMO codes $\ge 51$), or when local radar echo is active, the `#skyRainLayer` is automatically unhidden.
+* **Visual Rendering**: Pure CSS dual repeating linear gradients at $108^\circ$ diagonal tilt with an ultra-lightweight GPU translation animation (`@keyframes rainFall`), creating an authentic falling rain mist without performance overhead.
+
+---
+
+### F. Nighttime Astronomical Moon Phases & Starfield
+* **Synodic Lunar Calculation**: Calculates the exact lunar phase fraction ($0.0 \to 1.0$) from the known astronomical epoch:
+  $$D = \text{elapsed time since known new moon}; \quad \text{phase} = (D \pmod{29.530588\text{ days}}) / 29.530588$$
+* **Procedural SVG Lunar Shadow**:
+  * Adjusts an SVG terminator arc dynamically based on phase angle $\cos(2\pi \cdot \text{phase})$, accurately rendering New Moon, Waxing Crescent, First Quarter, Waxing Gibbous, Full Moon, Waning Gibbous, Last Quarter, and Waning Crescent.
+  * Emits a delicate pearlescent radial glow halo (`#moonGlowGrad`).
+* **Twinkling Starfield (`#skyStarsLayer`)**:
+  * Features multi-offset star clusters with ambient asynchronous pulsing keyframes (`starPulse`).
+  * Visible on clear and partly cloudy nights (hidden when cloud cover exceeds 85% to preserve physical realism).
+
+---
+
+### G. Frosted Glassmorphism & Accessibility Guard (`src/css/radar.css`)
 * **Daylight Controls**: `background: rgba(255, 255, 255, 0.65)`, `backdrop-filter: blur(8px)`, delicate border `rgba(255, 255, 255, 0.65)`, soft shadows, and dark slate text `#1e293b`.
 * **Automatic Dark-Mode Contrast (`.sky-dark`)**:
   * Automatically engaged at twilight, night, or during severe rain gloom.
@@ -105,19 +128,13 @@ When total cloud cover exceeds 65–70% (such as when Leiria is overcast at 98%)
 
 ---
 
-## 4. Recommended Future Improvements
+## 4. Completed Enhancements & Future Roadmap
 
-### 1. Rain / Drizzle Sheen Effect
-* **Concept**: When IPMA rain radar detects active precipitation ($\ge 0.5\text{ mm/h}$) at the user's location, apply a subtle CSS misting or falling rain sheen over the header.
-* **Implementation**: A lightweight CSS canvas overlay that draws sparse, semi-transparent diagonal streaks during active rain frames.
+### Completed in this Milestone:
+1. **Option A — Live Weather & Temperature Badge**: Real-time ambient temperature and weather symbol (e.g. `☁️ 21°C · Overcast`) beside IPMA logo.
+2. **Option B — Rain & Drizzle Sheen Layer**: Dynamic diagonal falling rain mist activated during active precipitation.
+3. **Option C — Nighttime Moon Phases & Starfield**: Exact astronomical synodic moon phase rendering with halo and twinkling starfield for clear/partly cloudy nights.
 
-### 2. Night Lunar Phases & Star Field
-* **Concept**: On clear nights ($< 25\%$ cloud cover), calculate the current moon phase (New, Crescent, Quarter, Gibbous, Full) and display a soft lunar glow alongside faint twinkling star accents.
-* **Implementation**: Standard synodic lunar cycle calculation (`(date - baseNewMoon) % 29.530588` days) adjusting an SVG moon crescent path.
-
-### 3. Direct IPMA Surface Station Telemetry
-* **Concept**: While Open-Meteo provides gridded model data, IPMA operates physical surface observation stations across Portugal (e.g., Leiria / Aeródromo, station ID `1210702`).
-* **Implementation**: Optionally pull ground temperature and wind speed from IPMA's surface observation API (`https://api.ipma.pt/open-data/observation/meteorology/stations/obs-surface.geojson`) to display local temperature beside the IPMA title.
-
-### 4. Interactive Location & Weather Lab Tool
-* **Concept**: Add an option in `labs/` or a developer toggle to test different Portuguese regions (Azores, Madeira, Porto, Algarve) and simulate extreme weather conditions on demand.
+### Future Improvement Roadmap:
+1. **Direct IPMA Surface Station Telemetry**: Pull exact ground wind speed, humidity, and barometric pressure from IPMA's surface observation API (`https://api.ipma.pt/open-data/observation/meteorology/stations/obs-surface.geojson`) for station 1210702 (Leiria/Aeródromo).
+2. **Interactive Location & Weather Lab Tool**: Provide an interactive control in `labs/` to test simulated conditions across Madeira, Azores, Porto, and Algarve.

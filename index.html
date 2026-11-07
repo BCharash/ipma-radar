@@ -19,6 +19,42 @@
 
 <div id="header">
 <div id="skyBackground" class="sky-background" aria-hidden="true">
+  <!-- Night starfield (rendered on clear/partly cloudy nights) -->
+  <svg class="sky-stars-layer" id="skyStarsLayer" viewBox="0 0 1000 160" fill="none" hidden>
+    <circle cx="65" cy="25" r="1.2" fill="#fff" class="star star-twinkle-1" />
+    <circle cx="140" cy="50" r="1.5" fill="#fff" class="star star-twinkle-2" />
+    <circle cx="210" cy="20" r="1.0" fill="#fff" class="star star-twinkle-3" />
+    <circle cx="290" cy="40" r="1.4" fill="#fff" class="star star-twinkle-1" />
+    <circle cx="380" cy="18" r="1.2" fill="#fff" class="star star-twinkle-2" />
+    <circle cx="460" cy="45" r="1.6" fill="#fff" class="star star-twinkle-3" />
+    <circle cx="530" cy="22" r="1.1" fill="#fff" class="star star-twinkle-1" />
+    <circle cx="620" cy="35" r="1.5" fill="#fff" class="star star-twinkle-2" />
+    <circle cx="710" cy="20" r="1.3" fill="#fff" class="star star-twinkle-3" />
+    <circle cx="790" cy="48" r="1.0" fill="#fff" class="star star-twinkle-1" />
+    <circle cx="870" cy="25" r="1.5" fill="#fff" class="star star-twinkle-2" />
+    <circle cx="940" cy="42" r="1.2" fill="#fff" class="star star-twinkle-3" />
+  </svg>
+
+  <!-- Night lunar phase container -->
+  <div class="sky-moon-container" id="skyMoonContainer" hidden>
+    <svg class="sky-moon-svg" viewBox="0 0 60 60" fill="none">
+      <defs>
+        <radialGradient id="moonGlowGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+          <stop offset="40%" stop-color="#f8fafc" stop-opacity="0.65" />
+          <stop offset="70%" stop-color="#94a3b8" stop-opacity="0.25" />
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+      <!-- Lunar halo -->
+      <circle cx="30" cy="30" r="28" fill="url(#moonGlowGrad)" />
+      <!-- Moon body -->
+      <circle cx="30" cy="30" r="13" fill="#f8fafc" />
+      <!-- Phase shadow mask -->
+      <path id="skyMoonShadow" fill="#0b1329" opacity="0.95" d="" />
+    </svg>
+  </div>
+
   <!-- High-altitude cloud tier (Cirrus wisps, ~6,000m - 12,000m) -->
   <svg class="cloud-layer cloud-layer-high" viewBox="0 0 1400 240" fill="none">
     <g id="skyHighClouds" opacity="0.35" filter="url(#cloudBlurCirrus)">
@@ -57,6 +93,9 @@
     </g>
   </svg>
 
+  <!-- Dynamic rain/drizzle mist layer -->
+  <div class="sky-rain-layer" id="skyRainLayer" hidden></div>
+
   <svg width="0" height="0" class="sky-filter-defs">
     <defs>
       <filter id="cloudBlurCirrus" x="-20%" y="-20%" width="140%" height="140%">
@@ -74,6 +113,7 @@
 <div id="controls">
 
 <div id="title">IPMA</div>
+<span id="skyWeatherBadge" class="sky-weather-badge" aria-label="Current weather condition" hidden></span>
 
 <select id="historySelect" aria-label="Radar history">
   <option value="1">1 h</option>

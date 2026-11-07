@@ -3,9 +3,9 @@
 /*
  * skyTheme.js
  * Astronomical solar calculations and live meteorological cloud theming.
- * Adjusts header sky gradients, multi-altitude cloud layers (High, Mid, Low),
- * overcast desaturation, and control contrast based on real-time solar elevation
- * and live weather observations.
+ * Checks GPS on startup to automatically fetch and render the user's local sky,
+ * multi-altitude cloud layers (High, Mid, Low), overcast desaturation,
+ * real-time temperature badge, rain/drizzle mist layer, and nighttime moon/stars.
  */
 
 const DEFAULT_SKY_COORDS = {
@@ -13,15 +13,64 @@ const DEFAULT_SKY_COORDS = {
   lon: -8.8071
 };
 
+const GPS_CACHE_KEY = "ipmaUserGpsCoords";
 const WEATHER_CACHE_KEY = "ipmaSkyLiveWeather";
 const WEATHER_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const SYNODIC_MONTH_MS = 29.53058770576 * 24 * 60 * 60 * 1000;
+const KNOWN_NEW_MOON_MS = Date.UTC(2024, 0, 11, 11, 57);
 
-let currentSkyCoords = { ...DEFAULT_SKY_COORDS };
+// Initialize coordinates from persistent GPS cache if previously detected
+let currentSkyCoords = (function getInitialCoords() {
+  try {
+    const cached = localStorage.getItem(GPS_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && typeof parsed.lat === "number" && typeof parsed.lon === "number") {
+        return { lat: parsed.lat, lon: parsed.lon };
+      }
+    }
+  } catch (_) {}
+  return { ...DEFAULT_SKY_COORDS };
+})();
+
 let skyMinuteTimer = null;
 let skyWeatherTimer = null;
 
-// Live meteorological cloud state
+// Live meteorological cloud & temperature state
 let liveWeatherData = null;
+
+/**
+ * Return friendly condition label from WMO weather code.
+ */
+function getWeatherConditionName(code) {
+  if (code === 0) return "Clear";
+  if (code === 1) return "Mainly Clear";
+  if (code === 2) return "Partly Cloudy";
+  if (code === 3) return "Overcast";
+  if (code === 45 || code === 48) return "Fog";
+  if (code >= 51 && code <= 55) return "Drizzle";
+  if (code >= 61 && code <= 65) return "Rain";
+  if (code >= 71 && code <= 77) return "Snow";
+  if (code >= 80 && code <= 82) return "Showers";
+  if (code >= 95) return "Thunderstorm";
+  return "Cloudy";
+}
+
+/**
+ * Return appropriate weather icon/symbol based on condition code and time of day.
+ */
+function getWeatherIcon(code, isDay) {
+  if (code >= 95) return "⛈️";
+  if (code >= 80 && code <= 82) return "🌧️";
+  if (code >= 71 && code <= 77) return "🌨️";
+  if (code >= 61 && code <= 65) return "🌧️";
+  if (code >= 51 && code <= 55) return "🌦️";
+  if (code === 45 || code === 48) return "🌫️";
+  if (code === 3) return "☁️";
+  if (code === 2) return isDay ? "⛅" : "☁️";
+  if (code === 1) return isDay ? "🌤️" : "🌙";
+  return isDay ? "☀️" : "🌙";
+}
 
 /**
  * Approximate the sun's elevation angle in degrees.
@@ -80,7 +129,49 @@ function getSolarElevation(date, lat, lon) {
 }
 
 /**
- * Fetch live cloud cover tiers from Open-Meteo.
+ * Calculate the astronomical moon phase and SVG shadow path for a given date.
+ */
+function getMoonPhase(date) {
+  const elapsed = date.getTime() - KNOWN_NEW_MOON_MS;
+  let phaseFraction = (elapsed % SYNODIC_MONTH_MS) / SYNODIC_MONTH_MS;
+  if (phaseFraction < 0) phaseFraction += 1;
+
+  let name = "New Moon";
+  if (phaseFraction >= 0.03 && phaseFraction < 0.22) name = "Waxing Crescent";
+  else if (phaseFraction >= 0.22 && phaseFraction < 0.28) name = "First Quarter";
+  else if (phaseFraction >= 0.28 && phaseFraction < 0.47) name = "Waxing Gibbous";
+  else if (phaseFraction >= 0.47 && phaseFraction < 0.53) name = "Full Moon";
+  else if (phaseFraction >= 0.53 && phaseFraction < 0.72) name = "Waning Gibbous";
+  else if (phaseFraction >= 0.72 && phaseFraction < 0.78) name = "Last Quarter";
+  else if (phaseFraction >= 0.78 && phaseFraction < 0.97) name = "Waning Crescent";
+
+  // Calculate SVG arc path for shadow covering the unilluminated portion
+  let shadowD = "";
+  if (phaseFraction <= 0.02 || phaseFraction >= 0.98) {
+    // New moon: fully shadowed
+    shadowD = "M 17 30 A 13 13 0 1 0 43 30 A 13 13 0 1 0 17 30 Z";
+  } else if (phaseFraction >= 0.48 && phaseFraction <= 0.52) {
+    // Full moon: no shadow
+    shadowD = "";
+  } else {
+    const k = Math.cos(2 * Math.PI * phaseFraction);
+    const rx = Math.max(0.1, Math.abs(k) * 13).toFixed(1);
+    if (phaseFraction < 0.5) {
+      // Waxing: dark side on left
+      const sweep = k > 0 ? 0 : 1;
+      shadowD = `M 30 17 A 13 13 0 0 0 30 43 A ${rx} 13 0 0 ${sweep} 30 17 Z`;
+    } else {
+      // Waning: dark side on right
+      const sweep = k > 0 ? 0 : 1;
+      shadowD = `M 30 17 A 13 13 0 0 1 30 43 A ${rx} 13 0 0 ${sweep} 30 17 Z`;
+    }
+  }
+
+  return { fraction: phaseFraction, name, shadowD };
+}
+
+/**
+ * Fetch live weather observations from Open-Meteo.
  * Free, open, no API key, cached in localStorage for 15 minutes.
  */
 async function fetchLiveWeather(lat, lon) {
@@ -92,8 +183,8 @@ async function fetchLiveWeather(lat, lon) {
       if (
         parsed &&
         Date.now() - parsed.timestamp < WEATHER_CACHE_TTL_MS &&
-        Math.abs(parsed.lat - lat) < 0.2 &&
-        Math.abs(parsed.lon - lon) < 0.2
+        Math.abs(parsed.lat - lat) < 0.05 &&
+        Math.abs(parsed.lon - lon) < 0.05
       ) {
         liveWeatherData = parsed;
         updateSkyTheme();
@@ -102,7 +193,7 @@ async function fetchLiveWeather(lat, lon) {
     }
   } catch (_) {}
 
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,weather_code,is_day`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,weather_code,is_day`;
 
   try {
     const response = await fetch(url);
@@ -111,6 +202,7 @@ async function fetchLiveWeather(lat, lon) {
     const data = await response.json();
     if (data && data.current) {
       liveWeatherData = {
+        temperature: typeof data.current.temperature_2m === "number" ? Math.round(data.current.temperature_2m) : null,
         total: typeof data.current.cloud_cover === "number" ? data.current.cloud_cover : 50,
         low: typeof data.current.cloud_cover_low === "number" ? data.current.cloud_cover_low : 30,
         mid: typeof data.current.cloud_cover_mid === "number" ? data.current.cloud_cover_mid : 30,
@@ -137,7 +229,6 @@ async function fetchLiveWeather(lat, lon) {
  */
 function getSkyPalette(elevation, weather) {
   const totalClouds = weather ? weather.total : 45;
-  const isOvercast = totalClouds >= 65;
   const overcastFactor = Math.max(0, Math.min(1, (totalClouds - 50) / 45)); // 0 (clear) to 1 (full overcast)
   const isRaining = weather && weather.weatherCode >= 51; // WMO codes >= 51 are rain, drizzle, or showers
 
@@ -253,7 +344,7 @@ function getSkyPalette(elevation, weather) {
 }
 
 /**
- * Apply the current sky theme and multi-tier cloud properties to the header DOM.
+ * Apply the current sky theme, multi-tier clouds, moon, stars, rain, and badge to the DOM.
  */
 function updateSkyTheme() {
   const header = document.getElementById("header");
@@ -262,6 +353,8 @@ function updateSkyTheme() {
   const now = new Date();
   const elevation = getSolarElevation(now, currentSkyCoords.lat, currentSkyCoords.lon);
   const palette = getSkyPalette(elevation, liveWeatherData);
+  const isNight = palette.isDark && elevation < -4;
+  const totalClouds = liveWeatherData ? liveWeatherData.total : 50;
 
   header.style.setProperty("--sky-gradient", palette.gradient);
   header.style.setProperty("--cloud-high-fill", palette.cloudHighFill);
@@ -282,6 +375,46 @@ function updateSkyTheme() {
     lowGroup.setAttribute("opacity", palette.lowOpacity.toFixed(2));
   }
 
+  // Option B: Rain & Drizzle Sheen Layer
+  const rainLayer = document.getElementById("skyRainLayer");
+  if (rainLayer) {
+    const isRaining = liveWeatherData && liveWeatherData.weatherCode >= 51;
+    rainLayer.hidden = !isRaining;
+  }
+
+  // Option C: Nighttime Moon Phase & Starfield
+  const moonContainer = document.getElementById("skyMoonContainer");
+  const moonShadow = document.getElementById("skyMoonShadow");
+  const starsLayer = document.getElementById("skyStarsLayer");
+
+  if (isNight && totalClouds < 92) {
+    const moon = getMoonPhase(now);
+    if (moonContainer) {
+      moonContainer.hidden = false;
+      moonContainer.title = `${moon.name} (${Math.round(moon.fraction * 100)}% cycle)`;
+    }
+    if (moonShadow) {
+      moonShadow.setAttribute("d", moon.shadowD);
+    }
+    if (starsLayer) {
+      // Stars twinkle through breaks when cloud cover is not solid overcast
+      starsLayer.hidden = totalClouds >= 85;
+    }
+  } else {
+    if (moonContainer) moonContainer.hidden = true;
+    if (starsLayer) starsLayer.hidden = true;
+  }
+
+  // Option A: Live Weather Badge (Icon + Temperature + Condition)
+  const badge = document.getElementById("skyWeatherBadge");
+  if (badge && liveWeatherData && liveWeatherData.temperature !== null) {
+    const condition = getWeatherConditionName(liveWeatherData.weatherCode);
+    const icon = getWeatherIcon(liveWeatherData.weatherCode, elevation > 0);
+    badge.textContent = `${icon} ${liveWeatherData.temperature}°C · ${condition}`;
+    badge.title = `Current observation for ${currentSkyCoords.lat.toFixed(2)}°N, ${Math.abs(currentSkyCoords.lon).toFixed(2)}°W`;
+    badge.hidden = false;
+  }
+
   if (palette.isDark) {
     header.classList.add("sky-dark");
   } else {
@@ -290,29 +423,57 @@ function updateSkyTheme() {
 }
 
 /**
- * Allow location updates (e.g., when the user pans or uses geolocation).
+ * Allow location updates (e.g. from GPS or map navigation).
  */
-function setSkyLocation(lat, lon) {
+function setSkyLocation(lat, lon, force = false) {
   if (typeof lat === "number" && typeof lon === "number") {
-    const movedSignificantly =
-      Math.abs(currentSkyCoords.lat - lat) > 0.2 ||
-      Math.abs(currentSkyCoords.lon - lon) > 0.2;
+    const moved =
+      Math.abs(currentSkyCoords.lat - lat) > 0.03 ||
+      Math.abs(currentSkyCoords.lon - lon) > 0.03;
 
     currentSkyCoords = { lat, lon };
+
+    try {
+      localStorage.setItem(GPS_CACHE_KEY, JSON.stringify({ lat, lon }));
+    } catch (_) {}
+
     updateSkyTheme();
 
-    if (movedSignificantly) {
+    if (moved || force || !liveWeatherData) {
       fetchLiveWeather(lat, lon);
     }
   }
 }
 
 /**
- * Initialize the sky theme engine.
+ * Check device GPS on startup to ensure the sky reflects the user's exact physical location.
+ */
+function checkGpsOnStartup() {
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      const { latitude: lat, longitude: lon } = position.coords;
+      setSkyLocation(lat, lon, true);
+    },
+    () => {
+      // Silent on permission denial or timeout: fallback to cached GPS or Leiria defaults
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 9000,
+      maximumAge: 120000
+    }
+  );
+}
+
+/**
+ * Initialize the sky theme engine on app startup.
  */
 function initSkyTheme() {
   updateSkyTheme();
   fetchLiveWeather(currentSkyCoords.lat, currentSkyCoords.lon);
+  checkGpsOnStartup();
 
   // Update solar angle every minute
   if (skyMinuteTimer) {
