@@ -626,6 +626,10 @@ select{
 
 @media(max-width:600px){
 
+  /* Leave room for wrapped provider credits and the build label. */
+  #frameCounter{bottom:72px}
+  #status{bottom:108px}
+
   #header{
     padding:6px 7px
   }

@@ -1,7 +1,7 @@
-# IPMA Radar — Design journal
+# SkyFlow — Design journal
 
-This is the maintained technical design record for the standalone IPMA radar
-and its eventual integration into Praias de Portugal. It is based on the existing
+This is the maintained technical design record for standalone satellite imagery and IPMA radar
+and their eventual integration into Praias de Portugal. It is based on the existing
 [integration handoff v3](archive/IPMA_Radar_Integration_Summary_v3.md), which
 extends [v2](archive/IPMA_Radar_Integration_Summary_v2.md). Its technical decisions,
 investigation findings, rejected approaches, and integration requirements are
@@ -1741,3 +1741,27 @@ arrivals, Loop off, and Map-only/no-layer timelines. Live catalogue responses
 were about 167–323 ms in this run; these are samples rather than a startup
 latency guarantee. `git diff --check` passed. Physical iPhone/Safari acceptance
 remains to be checked for combined playback and toggling.
+
+
+## 8 November 2026 — SkyFlow displayed branding
+
+Build `2026-11-08.3` changes the browser title, visible heading, manifest name
+and short name, and build tooltip to **SkyFlow**. The manifest description and
+current documentation introduction now describe satellite imagery and IPMA rain
+radar. The existing icon has no old-name text and is retained.
+
+The repository name, public URL, manifest start URL, storage/cache keys, provider
+credits and archived records retain their existing values. No repository rename,
+hosting change or deployment is part of this branding update.
+
+Validation: manifest JSON and `git diff --check` passed. Isolated Chrome checks
+at 320, 390 and 1280 pixels verified the SkyFlow title/heading, build label and
+unchanged manifest start URL. The live quick suite found the mobile credits
+could overlap the frame counter; mobile frame/status readouts now sit 24 pixels
+higher, and the credit-clearance check passed on subsequent runs. An older
+combined-playback assertion now checks clock advancement rather than requiring
+radar to advance during a valid held-image interval. Playback fixtures and
+progressive/replacement/cache checks passed in the run reaching those sections.
+The final two full quick-suite attempts stopped at the live street-name tile
+check; a complete final suite pass is not claimed. Physical iPhone installed-name
+acceptance remains separate.

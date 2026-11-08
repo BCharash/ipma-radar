@@ -73,7 +73,7 @@ function initializeMap(){
     );
 
   map.attributionControl.addAttribution(
-    '<span id="appBuild" title="Sky Flow build ' + APP_BUILD + '">Build ' + APP_BUILD + '</span>'
+    '<span id="appBuild" title="SkyFlow build ' + APP_BUILD + '">Build ' + APP_BUILD + '</span>'
   );
 
   map.attributionControl.addAttribution(

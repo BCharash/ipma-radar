@@ -1,7 +1,7 @@
-# ipma-radar
+# SkyFlow
 
-Standalone IPMA mainland Portugal precipitation radar, prepared for eventual
-integration into PraiasPortugal.
+Standalone satellite imagery and IPMA mainland Portugal precipitation radar,
+prepared for eventual integration into PraiasPortugal.
 
 Open `index.html` with Live Server to run the radar. `location-test.html` is a
 separate geolocation diagnostic page; opening it runs only the location test.

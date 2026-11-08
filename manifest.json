@@ -1,7 +1,7 @@
 {
-  "name": "IPMA Radar",
-  "short_name": "IPMA Radar",
-  "description": "IPMA precipitation radar for Portugal",
+  "name": "SkyFlow",
+  "short_name": "SkyFlow",
+  "description": "Cloud imagery and rain radar, with IPMA radar for Portugal.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",

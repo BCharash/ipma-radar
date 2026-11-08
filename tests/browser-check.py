@@ -553,8 +553,10 @@ try:
           pairs.push(sat.date.getTime()<=radarFrames[i].date.getTime());
         }
       }
-      startPlayback();await new Promise(r=>setTimeout(r,650));
-      const combinedAnimated=playing && currentFrameIndex>0;
+      startPlayback();const combinedStart=playbackTime;
+      await new Promise(r=>setTimeout(r,650));
+      // The combined clock can advance while radar holds its first image.
+      const combinedAnimated=playing && playbackTime>combinedStart;
       stopPlayback(false);
       const matching=pairs.length>0 && pairs.every(Boolean);
       const latest=satelliteFrames[satelliteFrames.length-1];
