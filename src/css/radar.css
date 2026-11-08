@@ -307,6 +307,8 @@ html,body{
   transition:background .2s ease, border-color .2s ease, color .2s ease
 }
 
+#appBuild{white-space:nowrap}
+
 #skyHeading{
   display:flex;
   align-items:center;

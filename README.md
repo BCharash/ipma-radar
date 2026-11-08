@@ -149,6 +149,10 @@ and cloud-mask candidates. Transparent cloud-only imagery is not implemented.
 
 ## Project structure
 
+The map attribution area displays the application build.
+Update its single identifier in `src/js/build-info.js` for each changed release;
+see [build numbering](docs/build-versioning.md).
+
 ```text
 ipma-radar/
 ├── index.html

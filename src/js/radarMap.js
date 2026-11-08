@@ -73,6 +73,10 @@ function initializeMap(){
     );
 
   map.attributionControl.addAttribution(
+    '<span id="appBuild" title="Sky Flow build ' + APP_BUILD + '">Build ' + APP_BUILD + '</span>'
+  );
+
+  map.attributionControl.addAttribution(
     'Weather: <a href="https://open-meteo.com/" target="_blank" rel="noopener" title="Model-based conditions; temperature rounded">Open-Meteo</a>' +
     ' (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>)'
   );
