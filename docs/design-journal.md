@@ -1809,3 +1809,13 @@ Validation: a focused headless Chrome check passed at widths of 320, 390 and
 there is no horizontal page overflow. Manifest names/start URL, icon responses
 and the cloud lab heading passed. `git diff --check` passed. Installed iPhone
 label updates and deployment were not tested in this checkpoint.
+
+### iPhone Home Screen name — build 2026-11-08.7
+
+After the user reported that Add to Home Screen still suggested SkyFlow, added
+explicit `apple-mobile-web-app-title` and `application-name` metadata with
+Atmora. The HTML title and manifest names were already Atmora. This supplies
+the Apple-specific naming metadata; it does not establish whether the reported
+suggestion came from an older deployment or cached content. The repository and
+folder remain ipma-radar, as requested. Physical iPhone acceptance and hosted
+deployment remain unverified.

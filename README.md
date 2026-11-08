@@ -3,6 +3,13 @@
 Standalone satellite imagery and IPMA mainland Portugal precipitation radar,
 prepared for eventual integration into PraiasPortugal.
 
+The application is named **Atmora**. Its repository and local folder still use
+`ipma-radar`; the repository, hosting address and folder migration have not been
+completed. See the [Atmora rename status](docs/atmora-rename-status.md) for the
+completed work and remaining migration steps. The earlier
+[SkyFlow rename proposal](docs/skyflow-rename-plan.md) is historical and uses the
+superseded name.
+
 Open `index.html` with Live Server to run the radar. `location-test.html` is a
 separate geolocation diagnostic page; opening it runs only the location test.
 
