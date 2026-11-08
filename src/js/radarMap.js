@@ -293,6 +293,7 @@ function setRadarVisible(value){
     : satelliteFrames[currentSatelliteIndex]?.date.getTime());
   radarVisible = value;
   radarToggle.checked = value;
+  if(!value && !SATELLITE_PRODUCTS[satelliteSelect.value]) stopPlayback(false);
 
   if(time !== undefined && time !== null) displayPlaybackTime(time);
   updateFrameCounter();

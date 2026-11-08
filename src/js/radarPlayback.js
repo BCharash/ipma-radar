@@ -10,25 +10,16 @@ let playbackTimer = null;
 let playbackView = null;
 let playbackTimeline = [];
 let playbackCursor = 0;
-let playbackSource = "radar";
 let playbackTime = null;
 let playbackSatelliteTimes = new Set();
 
-function playbackFrames(){ return (playing ? playbackSource === "radar" : radarVisible) ? radarFrames : satelliteFrames; }
-function playbackIndex(){ return (playing ? playbackSource === "radar" : radarVisible) ? currentFrameIndex : currentSatelliteIndex; }
-
-function availablePlaybackFrames(){
-  const frames = playbackFrames();
-  if((playing ? playbackSource === "radar" : radarVisible) && satelliteLoading && satelliteFrames.length){
-    return frames.filter(frame => frame.date.getTime() >= satelliteFrames[0].date.getTime());
-  }
-  return frames;
-}
-
-function displayPlaybackFrame(index){
-  const frame = playbackFrames()[index];
-  if(frame) displayPlaybackTime(frame.date.getTime());
-  if(!playing) queueSatelliteRefinement();
+// Build from successfully loaded observations, not the catalogue's expected
+// slots: missing downloads must not create empty steps or hide another source.
+function availablePlaybackTimes(){
+  const frames = [];
+  if(radarVisible) frames.push(...radarFrames);
+  if(SATELLITE_PRODUCTS[satelliteSelect.value]) frames.push(...satelliteFrames);
+  return [...new Set(frames.map(frame => frame.date.getTime()))].sort((a,b) => a-b);
 }
 
 function displayPlaybackTime(time){
@@ -65,12 +56,11 @@ function stopPlayback(restoreView=true){
 }
 
 function startPlayback(){
-  if(playing || (satelliteLoading && satelliteFrames.length < 2)) return;
-  const frames = availablePlaybackFrames();
-  if(frames.length < 2) return;
-  playbackSource = radarVisible ? "radar" : "satellite";
+  if(playing) return;
+  const times = availablePlaybackTimes();
+  if(times.length < 2) return;
   playbackView = {center:map.getCenter(),zoom:map.getZoom()};
-  playbackTimeline = frames.map(frame => frame.date.getTime());
+  playbackTimeline = times;
   playbackSatelliteTimes = new Set(satelliteFrames.map(frame => frame.date.getTime()));
   playbackCursor = 0;
   setPlayingUI(true);
@@ -84,18 +74,21 @@ function scheduleNextFrame(){
     if(!playing) return;
     playbackCursor++;
     if(playbackCursor >= playbackTimeline.length){
-      const availableTimes = availablePlaybackFrames().map(frame => frame.date.getTime());
-      const historyExtended = availableTimes.some(time => !playbackTimeline.includes(time));
+      const availableTimes = availablePlaybackTimes();
+      const historyExtended = availableTimes.some(time => !playbackTimeline.includes(time)) ||
+        (!!SATELLITE_PRODUCTS[satelliteSelect.value] && satelliteFrames.some(frame =>
+          !playbackSatelliteTimes.has(+frame.date)));
       // Initial history may grow while it loads. Reframing the same observations
       // or preparing High is a replacement, and must respect the Loop control.
-      const historyGrowing = satelliteLoading && satelliteRequestedDates.some(date =>
+      const historyGrowing = !!SATELLITE_PRODUCTS[satelliteSelect.value] && satelliteLoading && satelliteRequestedDates.some(date =>
         !satelliteFrames.some(frame => +frame.date === +date));
       if(looping || historyGrowing || historyExtended){
         commitSatelliteCoverage();
         commitSatelliteQuality();
-        playbackTimeline = availablePlaybackFrames().map(frame => frame.date.getTime());
+        playbackTimeline = availablePlaybackTimes();
         playbackSatelliteTimes = new Set(satelliteFrames.map(frame => frame.date.getTime()));
         playbackCursor = 0;
+        if(!playbackTimeline.length){ stopPlayback(false); return; }
       }
       else{
         stopPlayback(false);
@@ -108,14 +101,18 @@ function scheduleNextFrame(){
   },PLAYBACK_DELAY);
 }
 
-function showPreviousFrame(){
+function stepPlayback(direction){
   stopPlayback(false);
-  const count = playbackFrames().length;
-  if(count) displayPlaybackFrame((playbackIndex()-1+count)%count);
+  const times = availablePlaybackTimes();
+  if(!times.length) return;
+  const time = playbackTime ?? (radarVisible && radarFrames.length
+    ? +radarFrames[currentFrameIndex].date
+    : +satelliteFrames[currentSatelliteIndex].date);
+  const next = direction > 0 ? times.find(value => value > time)
+    : times.slice().reverse().find(value => value < time);
+  displayPlaybackTime(next ?? (direction > 0 ? times[0] : times[times.length-1]));
+  queueSatelliteRefinement();
 }
 
-function showNextFrame(){
-  stopPlayback(false);
-  const count = playbackFrames().length;
-  if(count) displayPlaybackFrame((playbackIndex()+1)%count);
-}
+function showPreviousFrame(){ stepPlayback(-1); }
+function showNextFrame(){ stepPlayback(1); }

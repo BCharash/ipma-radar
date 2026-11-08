@@ -101,6 +101,86 @@ try:
     result=c.evaluate("(async()=>{historySelect.value='1'; await Promise.all([rebuildRadar(),updateSatellite()]);return {frames:radarFrames.length,errors:testErrors};})()")
     print('RADAR',result,flush=True)
     assert result['frames'] > 1 and not result['errors']
+    result=c.evaluate("""(async()=>{
+      stopPlayback(false);cancelSatellitePreload();cancelSatelliteRefinement();
+      const saved={radarFrames,radarOverlays,satelliteFrames,currentFrameIndex,currentSatelliteIndex,
+        playbackTime,radarVisible,radarFrameAvailable,product:satelliteSelect.value,
+        queue:queueSatelliteRefinement,coverage:commitSatelliteCoverage,quality:commitSatelliteQuality};
+      const overlays=[];
+      const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+      const base=Date.parse('2026-11-08T12:00:00Z'),minute=60000;
+      const frame=time=>{
+        const canvas=document.createElement('canvas');canvas.width=2;canvas.height=2;
+        const overlay=L.imageOverlay(canvas.toDataURL(),map.getBounds(),{opacity:0}).addTo(map);
+        overlays.push(overlay);return {date:new Date(time),overlay,product:'visible',geometry:{width:2,height:2}};
+      };
+      try{
+        queueSatelliteRefinement=()=>{};commitSatelliteCoverage=()=>{};commitSatelliteQuality=()=>{};
+        satelliteSelect.value='visible';radarVisible=true;
+        radarFrames=Array.from({length:7},(_,i)=>frame(base+i*20*minute));
+        radarOverlays=radarFrames.map(f=>f.overlay);
+        satelliteFrames=Array.from({length:19},(_,i)=>frame(base+(i*10-30)*minute));
+        currentFrameIndex=0;currentSatelliteIndex=0;
+        const merged=availablePlaybackTimes();
+        const allFrames=merged.length===19 && [...radarFrames,...satelliteFrames].every(f=>merged.includes(+f.date));
+        let held=true;
+        for(const t of merged){
+          displayPlaybackTime(t);
+          const r=radarFrames.filter(f=>+f.date<=t).pop(),sat=satelliteFrames.filter(f=>+f.date<=t).pop();
+          held=held && (r ? radarFrameAvailable && radarFrames[currentFrameIndex]===r : !radarFrameAvailable)
+            && satelliteLayer===(sat?.overlay ?? null);
+        }
+        displayPlaybackTime(base-31*minute);
+        const noFuture=!radarFrameAvailable && !satelliteLayer;
+        // Different observation minutes must survive the merge too.
+        radarFrames.forEach(f=>f.date=new Date(+f.date+5*minute));
+        const distinct=availablePlaybackTimes().length===26;
+        playbackTime=base;showNextFrame();
+        const next=playbackTime===base+5*minute;
+        const satelliteHeld=+satelliteFrames.find(f=>f.overlay===satelliteLayer).date===base;
+        showPreviousFrame();const previous=playbackTime===base;
+        playbackTime=availablePlaybackTimes()[0];showPreviousFrame();
+        const wraps=playbackTime===availablePlaybackTimes().at(-1);
+        setLoopUI(false);startPlayback();
+        const clock=JSON.stringify(playbackTimeline),timer=playbackTimer,time=playbackTime;
+        setRadarVisible(false);setRadarVisible(true);
+        const toggleStable=playing && playbackTime===time && playbackTimer===timer && JSON.stringify(playbackTimeline)===clock;
+        satelliteFrames.unshift(frame(base-40*minute));
+        const arrivalsStable=JSON.stringify(playbackTimeline)===clock;
+        playbackCursor=playbackTimeline.length-1;await sleep(220);
+        const expanded=playing && playbackTimeline.length===27 && playbackTimeline[0]===base-40*minute;
+        // A new satellite image can share an existing radar timestamp. It still
+        // needs a pass even though the merged timestamp count has not changed.
+        satelliteFrames.push(frame(base+5*minute));satelliteFrames.sort((a,b)=>a.date-b.date);
+        displayPlaybackTime(base+5*minute);
+        const overlapHeld=+satelliteFrames.find(f=>f.overlay===satelliteLayer).date===base;
+        playbackCursor=playbackTimeline.length-1;await sleep(220);
+        const overlapAdopted=playing && playbackTimeline.length===27 && playbackSatelliteTimes.has(base+5*minute);
+        playbackCursor=playbackTimeline.length-1;await sleep(220);
+        const respectsLoop=!playing;
+        // Starting with radar disabled and enabling it must produce the same union next pass.
+        setRadarVisible(false);setLoopUI(true);startPlayback();setRadarVisible(true);
+        playbackCursor=playbackTimeline.length-1;await sleep(220);
+        const toggleOrder=JSON.stringify(playbackTimeline)===JSON.stringify(availablePlaybackTimes());
+        stopPlayback(false);satelliteSelect.value='map';
+        const mapOnly=availablePlaybackTimes().length===7;
+        radarVisible=false;
+        const none=availablePlaybackTimes().length===0;
+        return {allFrames,held,noFuture,distinct,next,satelliteHeld,previous,wraps,toggleStable,arrivalsStable,expanded,overlapHeld,overlapAdopted,respectsLoop,toggleOrder,mapOnly,none};
+      }finally{
+        stopPlayback(false);overlays.forEach(o=>o.remove());
+        radarFrames=saved.radarFrames;radarOverlays=saved.radarOverlays;satelliteFrames=saved.satelliteFrames;
+        currentFrameIndex=saved.currentFrameIndex;currentSatelliteIndex=saved.currentSatelliteIndex;
+        playbackTime=saved.playbackTime;radarVisible=saved.radarVisible;radarToggle.checked=radarVisible;
+        radarFrameAvailable=saved.radarFrameAvailable;satelliteSelect.value=saved.product;
+        queueSatelliteRefinement=saved.queue;commitSatelliteCoverage=saved.coverage;commitSatelliteQuality=saved.quality;
+        satelliteLayer=null;setLoopUI(false);
+        if(playbackTime!==null)displayPlaybackTime(playbackTime);
+        updatePlaybackControls();
+      }
+    })()""")
+    print('COMBINED_TIMELINE',result,flush=True)
+    assert all(result.values()),result
     for mode in (['hybrid'] if '--quick' in sys.argv else ['hybrid','visible','infrared']):
         result = c.evaluate("""(async () => {
           satelliteSelect.value = %s;

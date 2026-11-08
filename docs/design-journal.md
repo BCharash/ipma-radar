@@ -1707,3 +1707,37 @@ adjustment to the accepted interim artwork, not a new visual design.
 The focused browser check now starts with cloudy weather and checks the first
 state's actual opacity and absence of running cloud transitions, plus the
 five-second transition configuration for later updates.
+
+## 8 November 2026 — Combined radar and satellite timeline
+
+Previously, starting playback with radar enabled selected radar's observations
+as the clock. A short radar history could skip most satellite observations;
+starting satellite-only and enabling radar later retained a different clock.
+Playback and Previous/Next now use the sorted union of successfully loaded
+timestamps from both enabled layers. Each source keeps its most recent image
+at or before the selected time, remaining hidden before its first observation.
+Actual source timestamps remain visible. Disabling both layers stops playback.
+
+The running pass retains its snapshot. New observations join at the next
+boundary, including a satellite image whose timestamp already exists in the
+radar timeline. Radar toggles retain the current pass and the next pass uses
+the enabled layers. Initial history growth still repeats until the expanded
+history can play; Loop continues to control completed playback. Existing
+coverage and High-resolution replacements retain their boundary policy.
+
+Map view already schedules background GeoColour preparation after a 400 ms
+debounce. The catalogue supplies the newest observation and cadence, from which
+the selected history's expected count and span are calculated before image
+loading finishes. This is an expected roster, not a guarantee of image
+availability. The timeline uses successful downloads without waiting for the
+entire roster. No extra startup request or image-loading path was added.
+
+Validation: `python3 tests/browser-check.py` passed with live GeoColour,
+Visible and Infrared, existing progressive/High/coverage/cache/recovery checks,
+and new deterministic seven-radar/19-satellite fixtures. Fixtures verify all
+observations, differing timestamp minutes, holds in both layers, no future
+images, stepping/wrapping, toggle order, boundary adoption, overlapping late
+arrivals, Loop off, and Map-only/no-layer timelines. Live catalogue responses
+were about 167–323 ms in this run; these are samples rather than a startup
+latency guarantee. `git diff --check` passed. Physical iPhone/Safari acceptance
+remains to be checked for combined playback and toggling.

@@ -280,7 +280,7 @@ async function updateSatellite(force=false,coverageOnly=false){
   satelliteOpacityControl.disabled = !product;
   updatePlaybackControls();
   if(!product){
-    if(playing && playbackSource === "satellite") stopPlayback(false);
+    if(playing && !radarVisible) stopPlayback(false);
     removeSatelliteLayer();
     setSatelliteStatus("");
     updateFrameCounter();
@@ -444,8 +444,7 @@ function updatePlaybackControls(){
   intervalSelect.disabled = !radarVisible;
   for(const control of [previousButton, nextButton, playButton, loopButton]){
     if(control === playButton && playing){ control.disabled = false; continue; }
-    control.disabled = !active || (satelliteLoading && satelliteFrames.length < 2) ||
-      availablePlaybackFrames().length < (control === playButton ? 2 : 1);
+    control.disabled = !active || availablePlaybackTimes().length < (control === playButton ? 2 : 1);
   }
 }
 

@@ -36,14 +36,17 @@ and request results are recorded in the design journal.
 
 **Play/Pause**, **Previous**, **Next**, and **Loop** work for satellite-only and
 combined views. Low-resolution satellite observations load progressively at their
-native 10/15-minute cadence. Playback is available once two observations are
-loaded; a running animation keeps its time sequence while more frames arrive.
+native 10/15-minute cadence. Playback is available once two distinct observation
+times are loaded across the enabled layers; a running animation keeps its time
+sequence while more frames arrive.
 The next pass includes newly available frames. While history loads, playback
 repeats even with Loop off; after loading, it plays the expanded history once
 and then follows the Loop setting. The interval selector controls radar only. History
-selection applies to both. Failed satellite images are skipped. When radar is
-visible at Play, its sequence starts the clock; otherwise satellite does.
-That clock keeps running when radar is checked or unchecked. Each source shows
+selection applies to both. Failed satellite images are skipped. The playback
+clock combines every loaded radar and satellite timestamp from the enabled layers, sorted with duplicates
+removed. Previous and Next use that same combined timeline. Radar toggles leave
+the current pass running; the next pass rebuilds the timeline for the enabled
+layers. Satellite arrivals join at that boundary too. Each source shows
 its most recent observation at or before the clock time, holding earlier imagery
 across missing slots with actual timestamps shown. If no earlier observation
 exists, that source is hidden rather than showing a future image. Observations are not
@@ -90,6 +93,13 @@ available. Old entries can be evicted; storage restrictions fall back to memory.
 Radar images have a session-memory cache. Map tiles, fonts and vector styles use
 normal browser/provider caching; this is not a complete offline cache. A wider
 uncached region needs new images because its geographic bounds differ.
+
+While Map is selected, GeoColour preparation begins after a 400 ms debounce.
+The catalogue response provides the expected count and time span before image
+downloads finish; it does not guarantee every image will be available. Timeline
+construction uses successful downloads and does not wait for the full history.
+Catalogue response time depends on the provider; a fresh cached catalogue is
+reused for up to 60 seconds.
 
 Cold loads request only the relevant satellite-family catalogue, then four small
 registered images at a time, newest to oldest. High-resolution preparation also
