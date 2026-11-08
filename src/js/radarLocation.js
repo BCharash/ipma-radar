@@ -128,12 +128,17 @@ function useCurrentLocation(
         ).addTo(map);
 
       locationMarker =
-        L.circleMarker(
+        L.marker(
           [lat,lon],
           {
-            radius:6,
-            weight:2,
-            fillOpacity:.9
+            interactive:false,
+            keyboard:false,
+            icon:L.divIcon({
+              className:"current-location-marker",
+              html:'<span class="current-location-dot" role="img" aria-label="Current location"></span>',
+              iconSize:[24,24],
+              iconAnchor:[12,12]
+            })
           }
         ).addTo(map);
 

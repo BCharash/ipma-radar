@@ -1,4 +1,4 @@
 "use strict";
 
 // Release date + daily sequence. See docs/build-versioning.md.
-const APP_BUILD = "2026-11-08.3";
+const APP_BUILD = "2026-11-08.5";

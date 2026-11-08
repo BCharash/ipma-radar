@@ -1765,3 +1765,28 @@ progressive/replacement/cache checks passed in the run reaching those sections.
 The final two full quick-suite attempts stopped at the live street-name tile
 check; a complete final suite pass is not claimed. Physical iPhone installed-name
 acceptance remains separate.
+
+## 8 November 2026 — High-contrast current-location marker
+
+Build `2026-11-08.4` replaces the small translucent location dot with a 14 px
+opaque blue center, 3 px white ring and 2 px black outline (24 px total).
+The marker uses Leaflet's marker pane above radar, satellite and map context,
+with its anchor centered on the GPS coordinate. It has no animation and does
+not intercept map input. The existing accuracy circle and GPS flow are retained.
+The light/dark rings provide contrast without relying on red–green differences;
+final personal visibility acceptance remains with the user.
+
+Validation: the existing sky/startup GPS browser suite passed. A focused mobile
+Chrome check with mocked GPS verified the exact dimensions/colors, geographic
+centering, layer order and retained accuracy circle in Map, GeoColour and
+Infrared. Live satellite histories loaded in both satellite views. Screenshots
+were inspected in all three views. A repeated GPS success replaced the previous
+marker without leaving duplicates. `git diff --check` passed.
+
+### Location marker transparency — build 2026-11-08.5
+
+At the user's request, the blue center and white ring now use fixed 65% opacity;
+the black outline remains fully opaque. The white ring uses an inset shadow
+rather than a background beneath the center, so white and blue transparency do
+not compound and obscure the map underneath. Dimensions and GPS behavior remain
+the same.
