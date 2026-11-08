@@ -17,7 +17,7 @@ const panels={baseline:{map:maps[0],status:$('baselineStatus')},vector:{map:maps
   provider:{map:maps[2],status:$('providerStatus'),renderer:renderers.provider}};
 let metadata=null,request=null,generation=0,moveTimer=null,syncing=false;
 let radarRequest=null,radarGeneration=0,radarLayers=[];
-let record={lab:'SkyFlow cloud comparison',stage:'still images',runs:[]};
+let record={lab:'Atmora cloud comparison',stage:'still images',runs:[]};
 const mapFeatures=createMapFeatures([maps[0]],settings=>{record.mapFeatures=settings;});
 const radarStatus=document.createElement('p');radarStatus.id='radarStatus';radarStatus.className='hint';$('overall').after(radarStatus);
 function selectedTime() {
@@ -190,7 +190,7 @@ $('radar').addEventListener('change',()=>{
 });
 $('export').addEventListener('click',()=>{
   const url=URL.createObjectURL(new Blob([JSON.stringify({...record,notes:$('notes').value},null,2)],{type:'application/json'}));
-  const link=document.createElement('a');link.href=url;link.download='skyflow-cloud-comparison.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const link=document.createElement('a');link.href=url;link.download='atmora-cloud-comparison.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 async function checkProvider() {
   try {

@@ -1,6 +1,6 @@
 {
-  "name": "SkyFlow",
-  "short_name": "SkyFlow",
+  "name": "Atmora",
+  "short_name": "Atmora",
   "description": "Cloud imagery and rain radar, with IPMA radar for Portugal.",
   "start_url": "./",
   "display": "standalone",

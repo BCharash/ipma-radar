@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local SkyFlow lab server; optional Meteomatics credentials stay in environment."""
+"""Local Atmora lab server; optional Meteomatics credentials stay in environment."""
 import argparse,base64,datetime,getpass,http.server,json,math,os,pathlib,threading,urllib.error,urllib.parse,urllib.request
 from collections import OrderedDict
 ROOT=pathlib.Path(__file__).resolve().parents[1]
@@ -50,7 +50,7 @@ class LabHandler(http.server.SimpleHTTPRequestHandler):
                 data=self.server.provider_cache.get(url)
             if data is None:
                 credentials=(self.server.provider_username+':'+self.server.provider_password).encode()
-                request=urllib.request.Request(url,headers={'Authorization':'Basic '+base64.b64encode(credentials).decode(),'User-Agent':'SkyFlow-local-cloud-lab'})
+                request=urllib.request.Request(url,headers={'Authorization':'Basic '+base64.b64encode(credentials).decode(),'User-Agent':'Atmora-local-cloud-lab'})
                 response=urllib.request.build_opener(NoRedirect()).open(request,timeout=25)
                 with response:
                     data=response.read(10*1024*1024+1)

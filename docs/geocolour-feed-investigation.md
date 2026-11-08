@@ -7,7 +7,7 @@ observations, not provider latency or availability guarantees.
 
 A prepared Meteosat-12 GeoColour feed **does exist** at CIRA SLIDER. Public,
 timestamped PNG files downloaded without credentials. It is not yet a suitable
-direct replacement for SkyFlow's EUMETView requests: observations were older,
+direct replacement for Atmora's EUMETView requests: observations were older,
 the tiles need geographic reprojection, and direct browser fetches were blocked
 by cross-origin restrictions. Public access does not by itself establish
 permission to run a public redistribution service.

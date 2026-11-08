@@ -1,4 +1,4 @@
-# SkyFlow — Design journal
+# Atmora — Design journal
 
 This is the maintained technical design record for standalone satellite imagery and IPMA radar
 and their eventual integration into Praias de Portugal. It is based on the existing
@@ -1790,3 +1790,22 @@ the black outline remains fully opaque. The white ring uses an inset shadow
 rather than a background beneath the center, so white and blue transparency do
 not compound and obscure the map underneath. Dimensions and GPS behavior remain
 the same.
+
+
+## 8 November 2026 — Atmora displayed branding
+
+At the user's request, Atmora replaces SkyFlow as the application name in build
+`2026-11-08.6`. The browser title, visible heading, manifest name and short name,
+build tooltip, cloud lab titles and exported comparison filename now use Atmora.
+Current project documentation uses the new name; earlier journal entries retain
+the name used at that time. The earlier SkyFlow rename plan is superseded for
+branding and does not authorize repository or hosting changes.
+
+The repository folder, Git remote, URLs, manifest start URL, icons, cache names,
+preferences and internal lab layer identifiers remain unchanged.
+
+Validation: a focused headless Chrome check passed at widths of 320, 390 and
+1280 pixels: title, heading and build tooltip use Atmora, the heading fits, and
+there is no horizontal page overflow. Manifest names/start URL, icon responses
+and the cloud lab heading passed. `git diff --check` passed. Installed iPhone
+label updates and deployment were not tested in this checkpoint.

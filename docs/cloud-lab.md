@@ -1,4 +1,4 @@
-# SkyFlow cloud comparison lab
+# Atmora cloud comparison lab
 
 Open [labs/clouds/index.html](../labs/clouds/index.html) with Live Server, or visit
 `/labs/clouds/` on its running origin. This is an isolated still-image lab; the

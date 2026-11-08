@@ -1,6 +1,6 @@
 # Build identification
 
-SkyFlow uses `YYYY-MM-DD.N`: the UTC release preparation date and a daily sequence
+Atmora uses `YYYY-MM-DD.N`: the UTC release preparation date and a daily sequence
 starting at `1`, following iMuse's format. The first build was `2026-11-08.1`; `2026-11-08.2` moves the label to the map credits.
 
 `src/js/build-info.js` is the single source of the identifier. Map initialization displays

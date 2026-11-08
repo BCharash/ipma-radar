@@ -1,4 +1,4 @@
-# SkyFlow
+# Atmora
 
 Standalone satellite imagery and IPMA mainland Portugal precipitation radar,
 prepared for eventual integration into PraiasPortugal.
@@ -245,7 +245,7 @@ mocked weather and startup GPS, including cloud tiers, rain/snow, visibility,
 freshness, request cancellation and reduced motion.
 
 
-## SkyFlow cloud lab
+## Atmora cloud lab
 
 Open [`labs/clouds/index.html`](labs/clouds/index.html) with Live Server to compare
 GeoColour with regional map features against the identical imagery with a live,

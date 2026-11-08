@@ -1,6 +1,10 @@
 # Rename ipma-radar to SkyFlow
 
 Prepared: 6 November 2026.
+
+Superseded branding decision, 8 November 2026: the application is now **Atmora**.
+This document retains the earlier SkyFlow proposal as historical context. Its
+repository, URL and folder migration steps have not been carried out.
 Status: planning only. Creating this document does not authorize or perform an
 application rename, repository rename, folder move, push or deployment.
 

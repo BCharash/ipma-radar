@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated SkyFlow cloud-lab checks: live WMS plus controlled raster fixtures."""
+"""Isolated Atmora cloud-lab checks: live WMS plus controlled raster fixtures."""
 import base64, http.server, json, os, pathlib, socket, struct, subprocess, sys, threading, time, urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
